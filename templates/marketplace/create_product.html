@@ -10,16 +10,18 @@
                 </div>
                 <div class="card-body">
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% endwith %}
 
-                    <form method="POST" action="{{ url_for('marketplace.create_product') }}" class="needs-validation" enctype="multipart/form-data" novalidate>
+                    <form method="POST" action="{{ url_for('marketplace.create_product') }}" class="needs-validation"
+                        enctype="multipart/form-data" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="name" class="form-label">Product Name</label>
                             <input type="text" class="form-control" id="name" name="name" required>
@@ -36,7 +38,8 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="price" class="form-label">Price ($)</label>
-                                <input type="number" class="form-control" id="price" name="price" step="0.01" min="0" required>
+                                <input type="number" class="form-control" id="price" name="price" step="0.01" min="0"
+                                    required>
                                 <div class="invalid-feedback">
                                     Please provide a valid price.
                                 </div>
@@ -67,15 +70,18 @@
 
                         <div class="mb-3">
                             <label for="image" class="form-label">Product Image</label>
-                            <input type="file" class="form-control" id="image" name="image" accept="image/*" onchange="previewImage(this);">
+                            <input type="file" class="form-control" id="image" name="image" accept="image/*"
+                                onchange="previewImage(this);">
                             <div class="mt-2">
-                                <img id="imagePreview" src="#" alt="Preview" style="max-width: 200px; display: none;" class="img-thumbnail">
+                                <img id="imagePreview" src="#" alt="Preview" style="max-width: 200px; display: none;"
+                                    class="img-thumbnail">
                             </div>
                         </div>
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Create Product</button>
-                            <a href="{{ url_for('marketplace.seller_products') }}" class="btn btn-outline-secondary">Cancel</a>
+                            <a href="{{ url_for('marketplace.seller_products') }}"
+                                class="btn btn-outline-secondary">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -85,36 +91,36 @@
 </div>
 
 <script>
-// Form validation
-(function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
-    Array.prototype.slice.call(forms)
-        .forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-})()
+    // Form validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
 
-// Image preview
-function previewImage(input) {
-    var preview = document.getElementById('imagePreview');
-    if (input.files && input.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
+    // Image preview
+    function previewImage(input) {
+        var preview = document.getElementById('imagePreview');
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.src = '#';
+            preview.style.display = 'none';
         }
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        preview.src = '#';
-        preview.style.display = 'none';
     }
-}
 </script>
-{% endblock %} 
+{% endblock %}

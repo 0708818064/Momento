@@ -16,82 +16,85 @@
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
             {% endwith %}
 
             {% if products|length == 0 %}
-                <div class="text-center py-5">
-                    <i class="fas fa-box-open fa-5x text-muted mb-4"></i>
-                    <h4 class="text-muted">You haven't listed any products yet.</h4>
-                    <p class="text-muted">Start selling by adding your first product!</p>
-                    <a href="{{ url_for('marketplace.create_product') }}" class="btn btn-primary btn-lg mt-3">
-                        <i class="fas fa-plus"></i> Create Your First Product
-                    </a>
-                </div>
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-5x text-muted mb-4"></i>
+                <h4 class="text-muted">You haven't listed any products yet.</h4>
+                <p class="text-muted">Start selling by adding your first product!</p>
+                <a href="{{ url_for('marketplace.create_product') }}" class="btn btn-primary btn-lg mt-3">
+                    <i class="fas fa-plus"></i> Create Your First Product
+                </a>
+            </div>
             {% else %}
-                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                    {% for product in products %}
-                        <div class="col">
-                            <div class="card h-100 shadow-sm hover-shadow transition">
-                                {% if product.image_path %}
-                                    <img src="{{ url_for('marketplace.product_image', filename=product.image_path) }}"
-                                         class="card-img-top product-manage-img" alt="{{ product.name }}">
-                                {% else %}
-                                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                                        <i class="fas fa-image fa-3x text-muted"></i>
-                                    </div>
-                                {% endif %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for product in products %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm hover-shadow transition">
+                        {% if product.image_path %}
+                        <img src="{{ url_for('marketplace.product_image', filename=product.image_path) }}"
+                            class="card-img-top product-manage-img" alt="{{ product.name }}">
+                        {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center"
+                            style="height: 200px;">
+                            <i class="fas fa-image fa-3x text-muted"></i>
+                        </div>
+                        {% endif %}
 
-                                <div class="card-body d-flex flex-column">
-                                    <h5 class="card-title">{{ product.name }}</h5>
-                                    <p class="card-text text-muted flex-grow-1">
-                                        {{ product.description|truncate(100) }}
-                                    </p>
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text text-muted flex-grow-1">
+                                {{ product.description|truncate(100) }}
+                            </p>
 
-                                    <div class="mt-3">
-                                        <span class="badge bg-primary fs-6 mb-2">{{ product.category }}</span>
-                                    </div>
+                            <div class="mt-3">
+                                <span class="badge bg-primary fs-6 mb-2">{{ product.category }}</span>
+                            </div>
 
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h4 class="text-success mb-0">${{ "%.2f"|format(product.price) }}</h4>
-                                        <span class="text-{{ 'danger' if product.stock == 0 else 'warning' if product.stock < 10 else 'success' }}">
-                                            <i class="fas fa-cubes me-1"></i> {{ product.stock }} in stock
-                                        </span>
-                                    </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="text-success mb-0">${{ "%.2f"|format(product.price) }}</h4>
+                                <span
+                                    class="text-{{ 'danger' if product.stock == 0 else 'warning' if product.stock < 10 else 'success' }}">
+                                    <i class="fas fa-cubes me-1"></i> {{ product.stock }} in stock
+                                </span>
+                            </div>
 
-                                    <div class="btn-group w-100" role="group">
-                                        <a href="{{ url_for('marketplace.edit_product', product_id=product.id) }}"
-                                           class="btn btn-outline-primary">
-                                            <i class="fas fa-edit"></i> Edit
-                                        </a>
+                            <div class="btn-group w-100" role="group">
+                                <a href="{{ url_for('marketplace.edit_product', product_id=product.id) }}"
+                                    class="btn btn-outline-primary">
+                                    <i class="fas fa-edit"></i> Edit
+                                </a>
 
-                                        <!-- FIXED LINE: Safe JS escaping without escapejs filter -->
-                                        <form action="{{ url_for('marketplace.delete_product', product_id=product.id) }}"
-                                              method="POST" class="d-inline"
-                                              onsubmit="return confirm('Are you sure you want to delete &quot;{{ product.name|e }}&quot;?');">
-                                            <button type="submit" class="btn btn-outline-danger">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </button>
-                                        </form>
-                                    </div>
+                                <!-- FIXED LINE: Safe JS escaping without escapejs filter -->
+                                <form action="{{ url_for('marketplace.delete_product', product_id=product.id) }}"
+                                    method="POST" class="d-inline"
+                                    onsubmit="return confirm('Are you sure you want to delete &quot;{{ product.name|e }}&quot;?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
 
-                                    <div class="mt-2 text-center">
-                                        <small class="text-muted">
-                                            Listed: {{ product.created_at.strftime('%b %d, %Y') }}
-                                        </small>
-                                    </div>
-                                </div>
+                            <div class="mt-2 text-center">
+                                <small class="text-muted">
+                                    Listed: {{ product.created_at.strftime('%b %d, %Y') }}
+                                </small>
                             </div>
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
+                {% endfor %}
+            </div>
             {% endif %}
 
         </div>
@@ -103,12 +106,14 @@
         height: 200px;
         object-fit: cover;
     }
+
     .hover-shadow {
         transition: all 0.3s ease;
     }
+
     .hover-shadow:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.12) !important;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.12) !important;
     }
 </style>
 {% endblock %}

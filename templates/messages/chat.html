@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with {{ other_user.username }} - Momentoooo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="chat-container">
+                <!-- Chat Header -->
+                <div class="chat-header">
+                    <div class="chat-header-user">
+                        <a href="{{ url_for('messages.inbox') }}" class="btn btn-link text-secondary p-0 me-2">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                        <div class="chat-avatar">
+                            {{ other_user.username[0].upper() }}
+                        </div>
+                        <div class="chat-user-info">
+                            <h6>{{ other_user.username }}</h6>
+                            <small><i class="fas fa-circle me-1" style="font-size: 0.5rem;"></i>Online</small>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-link text-secondary"><i class="fas fa-ellipsis-v"></i></button>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div class="chat-messages" id="chatMessages">
+                    {% if messages %}
+                    {% for msg in messages %}
+                    <div
+                        class="chat-message {% if msg.sender_id == current_user.id %}sent{% else %}received{% endif %}">
+                        <div class="chat-message-avatar">
+                            {% if msg.sender_id == current_user.id %}
+                            {{ current_user.username[0].upper() }}
+                            {% else %}
+                            {{ other_user.username[0].upper() }}
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="chat-message-content">
+                                {{ msg.content }}
+                            </div>
+                            <span class="chat-message-time">
+                                {{ msg.created_at.strftime('%I:%M %p') }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="chat-empty" id="emptyState">
+                        <i class="fas fa-comments"></i>
+                        <p>No messages yet. Say hello!</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Chat Input -->
+                <form action="{{ url_for('messages.send_message', username=other_user.username) }}" method="POST"
+                    id="chatForm" class="chat-input-area">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="content" class="chat-input" placeholder="Type a message..."
+                        autocomplete="off" required id="messageInput">
+                    <button type="submit" class="chat-send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Scroll to bottom on load
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Handle form submission with AJAX
+    document.getElementById('chatForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+
+        if (!content) return;
+
+        // Add message to UI immediately
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.remove();
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message sent';
+        msgDiv.innerHTML = `
+        <div class="chat-message-avatar">{{ current_user.username[0].upper() }}</div>
+        <div>
+            <div class="chat-message-content">${content}</div>
+            <span class="chat-message-time">Just now</span>
+        </div>
+    `;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Clear input
+        input.value = '';
+
+        // Send to server
+        try {
+            const formData = new FormData(this);
+            formData.set('content', content);
+
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                console.error('Failed to send message');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
+    });
+
+    // Poll for new messages every 5 seconds
+    setInterval(async () => {
+        // In a production app, you'd use WebSockets instead
+    }, 5000);
+</script>
+{% endblock %}

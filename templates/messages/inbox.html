@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Messages - Momentoooo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0"><i class="fas fa-comments me-2"></i>Messages</h4>
+                <a href="{{ url_for('messages.new_conversation') }}" class="btn btn-primary-custom">
+                    <i class="fas fa-plus me-1"></i> New Message
+                </a>
+            </div>
+
+            {% if conversations %}
+            <div class="chat-list">
+                {% for conv in conversations %}
+                <a href="{{ url_for('messages.chat', username=conv.user.username) }}"
+                    class="chat-list-item {% if conv.unread_count > 0 %}unread{% endif %}">
+                    <div class="chat-list-avatar">
+                        {{ conv.user.username[0].upper() }}
+                    </div>
+                    <div class="chat-list-info">
+                        <div class="chat-list-name">{{ conv.user.username }}</div>
+                        <div class="chat-list-preview">
+                            {% if conv.last_message %}
+                            {% if conv.last_message.sender_id == current_user.id %}
+                            <span class="text-muted">You: </span>
+                            {% endif %}
+                            {{ conv.last_message.content[:50] }}{% if conv.last_message.content|length > 50 %}...{%
+                            endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="chat-list-meta">
+                        {% if conv.last_message %}
+                        <div class="chat-list-time">
+                            {{ conv.last_message.created_at.strftime('%b %d') }}
+                        </div>
+                        {% endif %}
+                        {% if conv.unread_count > 0 %}
+                        <div class="chat-list-badge">{{ conv.unread_count }}</div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="chat-empty card">
+                <div class="card-body">
+                    <i class="fas fa-inbox"></i>
+                    <h5>No messages yet</h5>
+                    <p class="text-muted">Start a conversation with other users</p>
+                    <a href="{{ url_for('messages.new_conversation') }}" class="btn btn-primary-custom">
+                        <i class="fas fa-plus me-1"></i> Start a Conversation
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

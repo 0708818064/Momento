@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-8">
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb" style="background: transparent;">
+                    <li class="breadcrumb-item"><a href="{{ url_for('marketplace.my_orders') }}"
+                            class="text-muted">Orders</a></li>
+                    <li class="breadcrumb-item active text-white">#{{ order.id }}</li>
+                </ol>
+            </nav>
+
+            <div class="card-dark mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0 text-white">Order #{{ order.id }}</h4>
+                    {% if order.delivery_status.value == 'delivered' %}
+                    <span class="badge rounded-pill px-3 py-2"
+                        style="background: #4CAF50; font-size: 0.9rem;">Delivered</span>
+                    {% elif order.delivery_status.value == 'shipped' %}
+                    <span class="badge rounded-pill px-3 py-2"
+                        style="background: #3b82f6; font-size: 0.9rem;">Shipped</span>
+                    {% elif order.delivery_status.value == 'processing' %}
+                    <span class="badge rounded-pill px-3 py-2"
+                        style="background: #8b5cf6; font-size: 0.9rem;">Processing</span>
+                    {% else %}
+                    <span class="badge rounded-pill px-3 py-2"
+                        style="background: #6b7280; font-size: 0.9rem;">Pending</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <!-- Product Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            {% if order.product.image_path %}
+                            <img src="{{ url_for('marketplace.product_image', filename=order.product.image_path) }}"
+                                class="img-fluid rounded" alt="{{ order.product.name }}">
+                            {% else %}
+                            <div class="d-flex align-items-center justify-content-center"
+                                style="background: var(--bg-tertiary); height: 150px; border-radius: 0.5rem;">
+                                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="text-white">{{ order.product.name }}</h5>
+                            <p class="text-muted">{{ order.product.description[:200] }}{% if
+                                order.product.description|length > 200 %}...{% endif %}</p>
+                            <p class="text-muted small">
+                                <i class="fas fa-store me-1"></i>Seller: {{ order.product.seller.business_name }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr style="border-color: var(--border-color);">
+
+                    <!-- Order Details -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Order Information</h6>
+                            <p class="mb-2"><span class="text-muted">Order Date:</span> <span class="text-white">{{
+                                    order.created_at.strftime('%B %d, %Y at %H:%M') }}</span></p>
+                            <p class="mb-2"><span class="text-muted">Quantity:</span> <span class="text-white">{{
+                                    order.quantity }}</span></p>
+                            <p class="mb-2"><span class="text-muted">Total:</span> <span class="text-white h5">KES {{
+                                    "%.2f"|format(order.total_amount) }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Payment Information</h6>
+                            {% if order.payment %}
+                            <p class="mb-2"><span class="text-muted">Method:</span> <span class="text-white">
+                                    {% if order.payment.payment_method.value == 'mpesa' %}
+                                    <i class="fas fa-mobile-alt me-1" style="color: #4CAF50;"></i>M-Pesa
+                                    {% else %}
+                                    {{ order.payment.payment_method.value|title }}
+                                    {% endif %}
+                                </span></p>
+                            <p class="mb-2"><span class="text-muted">Status:</span>
+                                {% if order.payment.status.value == 'completed' %}
+                                <span class="text-success"><i class="fas fa-check-circle me-1"></i>Paid</span>
+                                {% else %}
+                                <span class="text-warning">{{ order.payment.status.value|title }}</span>
+                                {% endif %}
+                            </p>
+                            {% if order.mpesa_receipt_number %}
+                            <p class="mb-2"><span class="text-muted">M-Pesa Receipt:</span> <span class="text-white">{{
+                                    order.mpesa_receipt_number }}</span></p>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if order.delivery_address %}
+                    <hr style="border-color: var(--border-color);">
+                    <h6 class="text-muted mb-3">Delivery Address</h6>
+                    <p class="text-white">{{ order.delivery_address }}</p>
+                    <p class="text-muted"><i class="fas fa-phone me-1"></i>{{ order.phone_number }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Delivery Timeline -->
+            <div class="card-dark">
+                <div class="card-header">
+                    <h5 class="mb-0 text-white"><i class="fas fa-truck me-2"></i>Delivery Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div
+                            class="timeline-item {{ 'active' if order.delivery_status.value in ['pending', 'processing', 'shipped', 'delivered'] else '' }}">
+                            <div class="timeline-icon"><i class="fas fa-check"></i></div>
+                            <div class="timeline-content">
+                                <h6>Order Placed</h6>
+                                <p class="text-muted small">{{ order.created_at.strftime('%B %d, %Y') }}</p>
+                            </div>
+                        </div>
+                        <div
+                            class="timeline-item {{ 'active' if order.delivery_status.value in ['processing', 'shipped', 'delivered'] else '' }}">
+                            <div class="timeline-icon"><i class="fas fa-box"></i></div>
+                            <div class="timeline-content">
+                                <h6>Processing</h6>
+                                <p class="text-muted small">Order is being prepared</p>
+                            </div>
+                        </div>
+                        <div
+                            class="timeline-item {{ 'active' if order.delivery_status.value in ['shipped', 'delivered'] else '' }}">
+                            <div class="timeline-icon"><i class="fas fa-shipping-fast"></i></div>
+                            <div class="timeline-content">
+                                <h6>Shipped</h6>
+                                <p class="text-muted small">On the way to you</p>
+                            </div>
+                        </div>
+                        <div class="timeline-item {{ 'active' if order.delivery_status.value == 'delivered' else '' }}">
+                            <div class="timeline-icon"><i class="fas fa-home"></i></div>
+                            <div class="timeline-content">
+                                <h6>Delivered</h6>
+                                {% if order.delivered_at %}
+                                <p class="text-muted small">{{ order.delivered_at.strftime('%B %d, %Y') }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card-dark sticky-top" style="top: 100px;">
+                <div class="card-header">
+                    <h5 class="mb-0 text-white">Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Contact the seller if you have questions about your order.</p>
+                    <a href="#" class="btn btn-outline-custom btn-block w-100 mb-2">
+                        <i class="fas fa-envelope me-2"></i>Contact Seller
+                    </a>
+                    <a href="{{ url_for('marketplace.my_orders') }}" class="btn btn-outline-custom btn-block w-100">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 10px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--border-color);
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+
+    .timeline-icon {
+        position: absolute;
+        left: -30px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .timeline-item.active .timeline-icon {
+        background: #4CAF50;
+        border-color: #4CAF50;
+        color: white;
+    }
+
+    .timeline-content h6 {
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+    }
+
+    .timeline-item.active .timeline-content h6 {
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}

@@ -71,11 +71,15 @@ class ChallengeManager:
         challenge_details = None # Dictionary to hold details from _create methods
 
         # Basic type check for crypto params relevance
-        crypto_types_accepting_params = ["aes", "des", "rc4", "blowfish"] # Add others if they support these params
+        crypto_types_accepting_params = ["aes", "des", "rc4", "blowfish", "caesar"] # Add others if they support these params
 
         # --- Pass relevant parameters down ---
         # --- CORRECTED STRUCTURE: Call helper methods ---
-        if challenge_type == "aes":
+        if challenge_type == "caesar":
+            challenge_details = self._create_caesar_challenge(
+                challenge_id, difficulty, flag, description
+            )
+        elif challenge_type == "aes":
             challenge_details = self._create_aes_challenge(
                 challenge_id, difficulty, flag, description,
                 key_length, mode, message_to_encrypt
@@ -117,21 +121,29 @@ class ChallengeManager:
              raise ValueError(f"Failed to generate details for challenge type: {challenge_type}")
 
         # --- Apply Layers ---
-        num_layers = 1 if difficulty == "easy" else 2 if difficulty == "medium" else 3
-        base_encrypted_data = challenge_details.get("encrypted_message", "")
-        # Ensure base_encrypted_data is the type challenge_layer expects (likely str or bytes)
-        if isinstance(base_encrypted_data, bytes):
-             # If layer expects string, decode first (e.g., base64 bytes to string)
-             try: base_encrypted_data = base_encrypted_data.decode('utf-8')
-             except UnicodeDecodeError: base_encrypted_data = base64.b64encode(base_encrypted_data).decode('ascii')
+        # Skip additional layers for simple cipher types that are already "encrypted"
+        simple_cipher_types = ["caesar", "vigenere", "xor", "hash", "web", "binary", "forensics", "stego", "reversing", "pwn"]
+        
+        if challenge_type in simple_cipher_types:
+            # Don't apply additional layers - the encryption is already done
+            layered_encrypted_data_str = str(challenge_details.get("encrypted_message", ""))
+        else:
+            # Apply additional layers for complex challenges like AES, RSA
+            num_layers = 1 if difficulty == "easy" else 2 if difficulty == "medium" else 3
+            base_encrypted_data = challenge_details.get("encrypted_message", "")
+            # Ensure base_encrypted_data is the type challenge_layer expects (likely str or bytes)
+            if isinstance(base_encrypted_data, bytes):
+                 # If layer expects string, decode first (e.g., base64 bytes to string)
+                 try: base_encrypted_data = base_encrypted_data.decode('utf-8')
+                 except UnicodeDecodeError: base_encrypted_data = base64.b64encode(base_encrypted_data).decode('ascii')
 
-        layered_encrypted_data = self.challenge_layer.apply_layers(str(base_encrypted_data), num_layers)
+            layered_encrypted_data = self.challenge_layer.apply_layers(str(base_encrypted_data), num_layers)
 
-        # Ensure final data is string for DB
-        if isinstance(layered_encrypted_data, bytes):
-            try: layered_encrypted_data_str = layered_encrypted_data.decode('utf-8')
-            except UnicodeDecodeError: layered_encrypted_data_str = base64.b64encode(layered_encrypted_data).decode('ascii')
-        else: layered_encrypted_data_str = str(layered_encrypted_data)
+            # Ensure final data is string for DB
+            if isinstance(layered_encrypted_data, bytes):
+                try: layered_encrypted_data_str = layered_encrypted_data.decode('utf-8')
+                except UnicodeDecodeError: layered_encrypted_data_str = base64.b64encode(layered_encrypted_data).decode('ascii')
+            else: layered_encrypted_data_str = str(layered_encrypted_data)
 
         # --- Process Files ---
         processed_files = []
@@ -225,19 +237,65 @@ class ChallengeManager:
         return self.user_stats.get(username, {})
 
     def use_hint(self, challenge_id, username):
-        """Use a hint for a challenge."""
+        """Use a hint for a challenge. First hint is always the encryption type."""
         challenge = db_session.query(Challenge).filter_by(id=challenge_id, is_active=True).first()
         if not challenge: return None, "Challenge not found."
+        
         # TODO: Move user stats to DB
         if username not in self.user_stats: self.user_stats[username] = {}
-        if challenge_id not in self.user_stats[username]: self.user_stats[username][challenge_id] = {"solved": False, "hints_used": 0}
+        if challenge_id not in self.user_stats[username]: 
+            self.user_stats[username][challenge_id] = {"solved": False, "hints_used": 0}
+        
         hints_used = self.user_stats[username][challenge_id]["hints_used"]
-        try: available_hints = json.loads(challenge.hints or '[]')
-        except json.JSONDecodeError: available_hints = []
-        if not available_hints or hints_used >= len(available_hints): return None, "No more hints available."
-        hint_to_reveal = available_hints[hints_used]
+        
+        # Build dynamic hints list with encryption type as first hint
+        dynamic_hints = []
+        
+        # Extract encryption type from layered format (LAYER_TYPE:KEY:DATA)
+        encrypted_msg = challenge.encrypted_message or ""
+        if ":" in encrypted_msg:
+            layer_type = encrypted_msg.split(":", 1)[0].upper()
+            if layer_type in ["AES", "VIGENERE", "RSA", "XOR"]:
+                dynamic_hints.append(f"🔐 Encryption Type: {layer_type}")
+            elif layer_type == "VIGENERE":
+                dynamic_hints.append("🔐 Encryption Type: Vigenère Cipher (classical polyalphabetic)")
+        
+        # Add hint about the challenge type
+        if challenge.type:
+            type_hints = {
+                'caesar': "This is a Caesar cipher. It's a simple shift cipher - try all 26 possible shifts!",
+                'aes': "This is an AES (Advanced Encryption Standard) challenge. Look for the key!",
+                'vigenere': "This is a Vigenère cipher. It's a polyalphabetic substitution cipher.",
+                'rsa': "This is RSA encryption. You'll need to find the private key or factor the modulus.",
+                'xor': "This is XOR encryption. Remember: XOR is its own inverse!",
+                'hash': "This is a hash cracking challenge. Use rainbow tables or wordlists.",
+                'web': "This is a web security challenge. Look for common vulnerabilities.",
+                'binary': "This is a binary exploitation challenge. Analyze the executable.",
+                'forensics': "This is a digital forensics challenge. Examine the evidence carefully.",
+                'stego': "This is a steganography challenge. Data may be hidden in files.",
+                'reversing': "This is a reverse engineering challenge. Disassemble and analyze.",
+                'pwn': "This is a pwn challenge. Exploit the binary to get the flag."
+            }
+            if challenge.type.lower() in type_hints:
+                dynamic_hints.append(f"💡 {type_hints[challenge.type.lower()]}")
+        
+        # Add stored hints from the database (might be list or JSON string)
+        stored_hints = challenge.hints or []
+        if isinstance(stored_hints, str):
+            try: 
+                stored_hints = json.loads(stored_hints)
+            except json.JSONDecodeError: 
+                stored_hints = []
+        
+        dynamic_hints.extend(stored_hints)
+        
+        # Check if we have hints left
+        if not dynamic_hints or hints_used >= len(dynamic_hints): 
+            return None, "No more hints available."
+        
+        hint_to_reveal = dynamic_hints[hints_used]
         self.user_stats[username][challenge_id]["hints_used"] += 1
-        return hint_to_reveal, "Hint revealed."
+        return hint_to_reveal, f"Hint {hints_used + 1}/{len(dynamic_hints)} revealed."
 
     # --- Private _create_* Methods ---
     # --- Placed at CLASS LEVEL (Correct Indentation) ---
@@ -301,6 +359,39 @@ class ChallengeManager:
                 "hints": hints, "mode_used": mode, "message_source": message_source}
     # --- End _create_aes_challenge ---
 
+    def _create_caesar_challenge(self, challenge_id, difficulty, flag, description):
+        """Creates a Caesar cipher challenge."""
+        # Shift amount varies by difficulty
+        shift_amounts = {"easy": [3, 5, 7], "medium": [11, 13, 17], "hard": [21, 23, 25]}
+        shift = random.choice(shift_amounts.get(difficulty, [3]))
+        
+        def caesar_encrypt(text, shift_val):
+            result = []
+            for char in text:
+                if char.isalpha():
+                    base = ord('A') if char.isupper() else ord('a')
+                    result.append(chr((ord(char) - base + shift_val) % 26 + base))
+                else:
+                    result.append(char)
+            return ''.join(result)
+        
+        encrypted_message = caesar_encrypt(flag, shift)
+        hints = [
+            "This is a Caesar cipher (substitution cipher).",
+            f"The alphabet is shifted by a certain number of positions.",
+            f"Try ROT{shift} or brute-force all 26 possible shifts."
+        ]
+        
+        return {
+            "id": challenge_id, 
+            "type": "caesar", 
+            "description": description or f"Decrypt this Caesar cipher ({difficulty}).", 
+            "key_used": str(shift), 
+            "flag": flag, 
+            "encrypted_message": encrypted_message, 
+            "hints": hints, 
+            "message_source": "flag"
+        }
 
     def _create_vigenere_challenge(self, challenge_id, difficulty, flag, description):
         key_length = 3 if difficulty == "medium" else 5 if difficulty == "hard" else 3

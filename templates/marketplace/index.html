@@ -1,61 +1,207 @@
 {% extends "base.html" %}
+{% block title %}Marketplace{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="fade-in">
+    <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Marketplace</h2>
-        {% if current_user.is_authenticated %}
-            <a href="{{ url_for('marketplace.become_seller') }}" class="btn btn-primary">Become a Seller</a>
-        {% endif %}
+        <div>
+            <h2 class="mb-1"><i class="fas fa-store me-2" style="color: var(--accent-primary);"></i>Marketplace</h2>
+            <p class="text-muted mb-0">Buy and sell products from verified users</p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('marketplace.become_seller') }}" class="btn btn-primary-custom">
+                <i class="fas fa-plus me-1"></i>Become a Seller
+            </a>
+            <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-outline-custom">
+                <i class="fas fa-th me-1"></i>All Products
+            </a>
+            {% endif %}
+        </div>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">
-                    {{ message }}
+    <!-- User Status Badge -->
+    {% if current_user.is_authenticated %}
+    <div class="card-dark mb-4">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(99, 102, 241, 0.2);">
+                        <i class="fas fa-user fa-2x" style="color: var(--accent-primary);"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-1">{{ current_user.username }}</h5>
+                        <div class="d-flex gap-2 flex-wrap">
+                            {% if current_user.is_admin %}
+                            <span class="badge"
+                                style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 0.4rem 0.8rem;">
+                                <i class="fas fa-crown me-1"></i>Admin
+                            </span>
+                            {% endif %}
+                            {% if seller %}
+                            <span class="badge"
+                                style="background: linear-gradient(135deg, #059669, #047857); padding: 0.4rem 0.8rem;">
+                                <i class="fas fa-store me-1"></i>Seller
+                            </span>
+                            {% endif %}
+                            {% if buyer %}
+                            <span class="badge"
+                                style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 0.4rem 0.8rem;">
+                                <i class="fas fa-shopping-cart me-1"></i>Buyer
+                            </span>
+                            {% endif %}
+                            {% if not seller and not buyer and not current_user.is_admin %}
+                            <span class="badge"
+                                style="background: linear-gradient(135deg, #0d9488, #0f766e); padding: 0.4rem 0.8rem;">
+                                <i class="fas fa-user-astronaut me-1"></i>Enthusiast
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+                <a href="{{ url_for('index') }}" class="btn btn-outline-custom btn-sm">
+                    <i class="fas fa-home me-1"></i>Home
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-        {% for product in products %}
-        <div class="col">
-            <div class="card h-100">
-                {% if product.image_filename %}
-                <img src="{{ url_for('marketplace.product_image', filename=product.image_filename) }}" 
-                     class="card-img-top" alt="{{ product.name }}"
-                     style="height: 200px; object-fit: cover;">
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card-dark">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(99, 102, 241, 0.2);">
+                        <i class="fas fa-box fa-2x" style="color: var(--accent-primary);"></i>
+                    </div>
+                    <div>
+                        <div class="h4 mb-0">{{ products|length if products else 0 }}</div>
+                        <div class="text-muted">Products Available</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-dark">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(16, 185, 129, 0.2);">
+                        <i class="fas fa-users fa-2x" style="color: var(--accent-success);"></i>
+                    </div>
+                    <div>
+                        <div class="h4 mb-0">Active</div>
+                        <div class="text-muted">Verified Sellers</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card-dark">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded-circle p-3 me-3" style="background: rgba(34, 211, 238, 0.2);">
+                        <i class="fas fa-shield-alt fa-2x" style="color: var(--accent-secondary);"></i>
+                    </div>
+                    <div>
+                        <div class="h4 mb-0">Secure</div>
+                        <div class="text-muted">Payment Protected</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Products -->
+    <div class="card-dark mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-star me-2" style="color: var(--accent-warning);"></i>Featured Products
+            </h5>
+            <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-sm btn-outline-custom">
+                View All <i class="fas fa-arrow-right ms-1"></i>
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="product-grid">
+                {% for product in products %}
+                <div class="card-dark fade-in" style="animation-delay: {{ loop.index * 0.1 }}s; margin: 0;">
+                    {% if product.image_path %}
+                    <img src="{{ url_for('marketplace.product_image', filename=product.image_path) }}"
+                        class="card-img-top" alt="{{ product.name }}" style="height: 180px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top d-flex align-items-center justify-content-center"
+                        style="height: 180px; background: var(--bg-tertiary);">
+                        <i class="fas fa-image text-muted" style="font-size: 2.5rem;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">{{ product.name }}</h6>
+                            <span class="badge badge-primary-custom" style="font-size: 0.7rem;">{{ product.category
+                                }}</span>
+                        </div>
+                        <p class="card-text text-muted small mb-2">{{ product.description | truncate(60) }}</p>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between align-items-center">
+                        <span class="h6 mb-0" style="color: var(--accent-success);">${{ "%.2f"|format(product.price)
+                            }}</span>
+                        <a href="{{ url_for('marketplace.checkout', product_id=product.id) }}"
+                            class="btn btn-sm btn-primary-custom">
+                            <i class="fas fa-cart-plus"></i>
+                        </a>
+                    </div>
+                </div>
                 {% else %}
-                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
-                     style="height: 200px;">
-                    <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+                <div class="col-12 text-center py-5">
+                    <i class="fas fa-box-open mb-3" style="font-size: 4rem; color: var(--text-muted);"></i>
+                    <h5>No Products Yet</h5>
+                    <p class="text-muted">Be the first to list a product!</p>
+                    <a href="{{ url_for('marketplace.become_seller') }}" class="btn btn-primary-custom">
+                        <i class="fas fa-plus me-2"></i>Become a Seller
+                    </a>
                 </div>
-                {% endif %}
-                <div class="card-body">
-                    <h5 class="card-title">{{ product.name }}</h5>
-                    <p class="card-text">{{ product.description }}</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-primary">{{ product.category }}</span>
-                        <span class="text-muted">Stock: {{ product.stock }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card-dark h-100">
+                <div class="card-body text-center py-4">
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 60px; height: 60px; background: rgba(99, 102, 241, 0.2);">
+                        <span class="h4 mb-0" style="color: var(--accent-primary);">1</span>
                     </div>
-                </div>
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span class="h5 mb-0">${{ "%.2f"|format(product.price) }}</span>
-                        <small class="text-muted">Sold by: {{ product.seller.business_name }}</small>
-                    </div>
+                    <h5>Get Verified</h5>
+                    <p class="text-muted small mb-0">Complete challenges to become a verified buyer or seller</p>
                 </div>
             </div>
         </div>
-        {% else %}
-        <div class="col-12">
-            <div class="alert alert-info" role="alert">
-                No products available at the moment.
+        <div class="col-md-4">
+            <div class="card-dark h-100">
+                <div class="card-body text-center py-4">
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 60px; height: 60px; background: rgba(34, 211, 238, 0.2);">
+                        <span class="h4 mb-0" style="color: var(--accent-secondary);">2</span>
+                    </div>
+                    <h5>List or Browse</h5>
+                    <p class="text-muted small mb-0">Sellers list products, buyers browse and shop</p>
+                </div>
             </div>
         </div>
-        {% endfor %}
+        <div class="col-md-4">
+            <div class="card-dark h-100">
+                <div class="card-body text-center py-4">
+                    <div class="rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center"
+                        style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.2);">
+                        <span class="h4 mb-0" style="color: var(--accent-success);">3</span>
+                    </div>
+                    <h5>Secure Trade</h5>
+                    <p class="text-muted small mb-0">Complete transactions with secure payment processing</p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

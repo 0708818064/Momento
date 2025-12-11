@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Unlock Key - {{ challenge.id }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-key me-2" style="color: var(--accent-warning);"></i>
+                Unlock Key Parts
+            </h2>
+            <p class="text-muted mb-0">Complete minigames to reveal the decryption key</p>
+        </div>
+        <a href="{{ url_for('view_challenge', challenge_id=challenge.id) }}" class="btn btn-outline-custom">
+            <i class="fas fa-arrow-left me-1"></i>Back to Challenge
+        </a>
+    </div>
+
+    <!-- Revealed Key Display -->
+    <div class="card-dark mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-unlock-alt me-2"></i>Your Key Progress</h5>
+            <span class="badge bg-secondary">{{ key_parts|selectattr('revealed')|list|length }}/{{ key_parts|length }}
+                Games</span>
+        </div>
+        <div class="card-body text-center py-4">
+            <!-- Progress Bar -->
+            {% set completed = key_parts|selectattr('revealed')|list|length %}
+            {% set total = key_parts|length %}
+            <div class="progress mb-4" style="height: 10px; background: var(--bg-tertiary);">
+                <div class="progress-bar" role="progressbar"
+                    style="width: {{ (completed / total * 100)|int }}%; background: linear-gradient(90deg, var(--accent-primary), var(--accent-success));"
+                    aria-valuenow="{{ completed }}" aria-valuemin="0" aria-valuemax="{{ total }}"></div>
+            </div>
+
+            <!-- Key Display - Large and Prominent -->
+            <div class="key-display-container p-4 mb-3"
+                style="background: var(--bg-tertiary); border-radius: 1rem; border: 2px solid var(--border-color);">
+                <p class="text-muted small mb-2"><i class="fas fa-key me-1"></i>REVEALED KEY</p>
+                <div class="key-display mb-2" id="revealedKey"
+                    style="font-family: 'Courier New', monospace; font-size: 2rem; letter-spacing: 0.15em; word-break: break-all;">
+                    {% for char in revealed_key %}
+                    {% if char == '*' %}
+                    <span class="text-muted" style="opacity: 0.4;">•</span>
+                    {% else %}
+                    <span style="color: var(--accent-success); text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);">{{ char
+                        }}</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Copy Button -->
+                {% if '*' not in revealed_key %}
+                <button class="btn btn-success btn-sm mt-2" onclick="copyKey()">
+                    <i class="fas fa-copy me-1"></i>Copy Full Key
+                </button>
+                <p class="text-success small mt-2 mb-0">
+                    <i class="fas fa-check-circle me-1"></i>All games completed! Use this key to decrypt the challenge.
+                </p>
+                {% else %}
+                <p class="text-muted mb-0 small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Complete the remaining games to reveal the full key
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyKey() {
+            const keyText = '{{ revealed_key }}';
+            navigator.clipboard.writeText(keyText).then(() => {
+                alert('Key copied to clipboard!');
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = keyText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Key copied to clipboard!');
+            });
+        }
+    </script>
+
+    <!-- Minigames Grid -->
+    <div class="row g-4">
+        {% for part in key_parts %}
+        <div class="col-md-4">
+            <div class="card-dark h-100 {% if part.revealed %}border-success{% endif %}">
+                <div class="card-body text-center py-4">
+                    <!-- Game Icon -->
+                    <div class="mb-3">
+                        {% if part.game_type == 'wheel' %}
+                        <i class="fas fa-dice fa-3x"
+                            style="color: {% if part.revealed %}var(--accent-success){% else %}var(--accent-primary){% endif %};"></i>
+                        {% elif part.game_type == 'quiz' %}
+                        <i class="fas fa-question-circle fa-3x"
+                            style="color: {% if part.revealed %}var(--accent-success){% else %}var(--accent-secondary){% endif %};"></i>
+                        {% elif part.game_type == 'memory' %}
+                        <i class="fas fa-brain fa-3x"
+                            style="color: {% if part.revealed %}var(--accent-success){% else %}var(--accent-warning){% endif %};"></i>
+                        {% elif part.game_type == 'slider' %}
+                        <i class="fas fa-puzzle-piece fa-3x"
+                            style="color: {% if part.revealed %}var(--accent-success){% else %}#e879f9{% endif %};"></i>
+                        {% elif part.game_type == 'scramble' %}
+                        <i class="fas fa-random fa-3x"
+                            style="color: {% if part.revealed %}var(--accent-success){% else %}#fb923c{% endif %};"></i>
+                        {% endif %}
+                    </div>
+
+                    <!-- Game Name -->
+                    <h5 class="card-title">
+                        {% if part.game_type == 'wheel' %}Dice Roll
+                        {% elif part.game_type == 'quiz' %}Crypto Quiz
+                        {% elif part.game_type == 'memory' %}Memory Match
+                        {% elif part.game_type == 'slider' %}Slider Puzzle
+                        {% elif part.game_type == 'scramble' %}Word Scramble
+                        {% endif %}
+                    </h5>
+
+                    <!-- Status -->
+                    {% if part.revealed %}
+                    <span class="badge badge-success-custom mb-3">
+                        <i class="fas fa-check me-1"></i>Completed
+                    </span>
+                    <div class="revealed-part mt-2"
+                        style="font-family: monospace; font-size: 1.2rem; color: var(--accent-success);">
+                        {{ part.value }}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-3">Reveals {{ part.value|length }} character(s)</p>
+                    <a href="{{ url_for('minigames.' ~ part.game_type ~ ('_spin' if part.game_type == 'wheel' else ('_game' if part.game_type in ['quiz', 'memory', 'scramble'] else '_puzzle')), challenge_id=challenge.id) }}"
+                        class="btn btn-primary-custom">
+                        <i class="fas fa-play me-1"></i>Play
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Instructions -->
+    <div class="card-dark mt-4">
+        <div class="card-body">
+            <h6><i class="fas fa-lightbulb me-2" style="color: var(--accent-warning);"></i>How It Works</h6>
+            <ul class="text-muted mb-0 small">
+                <li>Each minigame reveals a portion of the encryption key</li>
+                <li>Complete all 5 games to get the full key</li>
+                <li>Use the revealed key to decrypt the challenge message</li>
+                <li>Progress is saved automatically</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

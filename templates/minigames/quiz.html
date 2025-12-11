@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Crypto Quiz - {{ challenge.id }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-question-circle me-2" style="color: var(--accent-secondary);"></i>
+                Crypto Quiz
+            </h2>
+            <p class="text-muted mb-0">Answer correctly to reveal key characters</p>
+        </div>
+        <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}" class="btn btn-outline-custom">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <div class="card-dark">
+        <div class="card-body">
+            <form id="quizForm">
+                {% for question in questions %}
+                {% set q_idx = loop.index0 %}
+                <div class="question-card mb-4 p-4" style="background: var(--bg-tertiary); border-radius: 1rem;">
+                    <h5 class="mb-3">
+                        <span class="badge badge-primary-custom me-2">Q{{ loop.index }}</span>
+                        {{ question.question }}
+                    </h5>
+                    <div class="options">
+                        {% for option in question.options %}
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="q{{ q_idx }}"
+                                id="q{{ q_idx }}_{{ loop.index0 }}" value="{{ loop.index0 }}">
+                            <label class="form-check-label" for="q{{ q_idx }}_{{ loop.index0 }}">
+                                {{ option }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary-custom btn-lg">
+                        <i class="fas fa-check me-2"></i>Submit Answers
+                    </button>
+                </div>
+            </form>
+
+            <!-- Result Display -->
+            <div id="resultArea" style="display: none;" class="mt-4">
+                <div id="resultMessage"></div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}"
+                        class="btn btn-primary-custom btn-lg" id="continueBtn" style="display: none;">
+                        <i class="fas fa-arrow-right me-2"></i>Continue
+                    </a>
+                    <button onclick="location.reload()" class="btn btn-outline-custom btn-lg" id="retryBtn"
+                        style="display: none;">
+                        <i class="fas fa-redo me-2"></i>Try Again
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('quizForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const answers = [];
+        const numQuestions = {{ questions| length
+    }};
+
+    for (let i = 0; i < numQuestions; i++) {
+        const selected = document.querySelector('input[name="q' + i + '"]:checked');
+        answers.push(selected ? parseInt(selected.value) : -1);
+    }
+
+    fetch('{{ url_for("minigames.quiz_submit", challenge_id=challenge.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ answers: answers })
+    })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('quizForm').style.display = 'none';
+            document.getElementById('resultArea').style.display = 'block';
+
+            if (data.success) {
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-dark-success py-4 text-center">
+                        <h4 class="mb-2"><i class="fas fa-check-circle me-2"></i>Excellent!</h4>
+                        <p class="mb-2">You got ${data.correct}/${data.total} correct!</p>
+                        <div style="font-size: 2rem; font-family: monospace; color: var(--accent-success);">
+                            Key Part: ${data.revealed_part}
+                        </div>
+                    </div>
+                `;
+                document.getElementById('continueBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('resultMessage').innerHTML = `
+                    <div class="alert alert-dark-warning py-4 text-center">
+                        <h4 class="mb-2"><i class="fas fa-times-circle me-2"></i>Not Quite!</h4>
+                        <p class="mb-0">${data.message}</p>
+                    </div>
+                `;
+                document.getElementById('retryBtn').style.display = 'inline-block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        });
+    });
+</script>
+{% endblock %}

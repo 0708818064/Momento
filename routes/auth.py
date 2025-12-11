@@ -4,7 +4,7 @@ from core.database import db_session
 from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
-from core.email.service import mail
+from core.email.service import mail, send_verification_email
 from flask_mail import Message
 import secrets
 
@@ -18,28 +18,84 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        confirm_password = request.form.get('confirm_password')
         email = request.form.get('email')
         
+        # Validate password confirmation
+        if password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('auth/register.html')
+        
+        # Check if username exists
         if User.query.filter_by(username=username).first():
             flash('Username already exists', 'error')
             return render_template('auth/register.html')
         
+        # Check if email exists
+        if email and User.query.filter_by(email=email).first():
+            flash('Email already registered. Please login instead.', 'error')
+            return redirect(url_for('auth.login'))
+        
+        # Create user with email verification required
         user = User(
             username=username,
             password_hash=generate_password_hash(password),
             email=email,
             is_active=True,
             is_admin=False,
+            email_verified=False,
             created_at=datetime.utcnow()
         )
+        
+        # Generate email verification token
+        user.generate_email_token()
+        
         db_session.add(user)
         db_session.commit()
         
-        login_user(user)
-        flash('Registration successful!', 'success')
-        return redirect(url_for('list_challenges'))
+        # Send verification email
+        try:
+            send_verification_email(user)
+            flash('Registration successful! Please check your email to verify your account.', 'success')
+        except Exception as e:
+            flash('Registration successful but we could not send verification email. Please request a new one.', 'warning')
+        
+        return redirect(url_for('auth.verify_pending', email=email))
     
     return render_template('auth/register.html')
+
+@auth_bp.route('/verify-pending')
+def verify_pending():
+    """Show verification pending page"""
+    email = request.args.get('email', '')
+    return render_template('auth/verify_pending.html', email=email)
+
+@auth_bp.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Resend verification email"""
+    email = request.form.get('email')
+    
+    if not email:
+        flash('Please provide your email address.', 'error')
+        return redirect(url_for('auth.login'))
+    
+    user = User.query.filter_by(email=email).first()
+    
+    if user and not user.email_verified:
+        # Generate new token
+        user.generate_email_token()
+        db_session.commit()
+        
+        try:
+            send_verification_email(user)
+            flash('Verification email sent! Please check your inbox.', 'success')
+        except Exception as e:
+            flash('Failed to send verification email. Please try again later.', 'error')
+    else:
+        # Don't reveal if user exists or is already verified
+        flash('If the email exists and is unverified, a verification link has been sent.', 'info')
+    
+    return redirect(url_for('auth.verify_pending', email=email))
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -56,6 +112,11 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, password):
+            # Check email verification
+            if not user.email_verified and not user.is_admin:
+                flash('Please verify your email before logging in. Check your inbox for the verification link.', 'warning')
+                return redirect(url_for('auth.verify_pending', email=user.email))
+            
             if admin_login and not user.is_admin:
                 flash('Access denied. Admin privileges required.', 'error')
                 return render_template('auth/login.html', admin_login=True)

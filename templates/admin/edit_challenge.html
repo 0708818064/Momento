@@ -3,24 +3,26 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Edit Challenge</h2>
-    
+
     {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('admin.edit_challenge', challenge_id=challenge.id) }}" class="needs-validation" novalidate>
+    <form method="POST" action="{{ url_for('admin.edit_challenge', challenge_id=challenge.id) }}"
+        class="needs-validation" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="row">
             <div class="col-md-6 mb-3">
                 <label for="challenge_id" class="form-label">Challenge ID</label>
                 <input type="text" class="form-control" id="challenge_id" value="{{ challenge.id }}" readonly>
             </div>
-            
+
             <div class="col-md-6 mb-3">
                 <label for="challenge_type" class="form-label">Challenge Type</label>
                 <input type="text" class="form-control" id="challenge_type" value="{{ challenge.type }}" readonly>
@@ -31,23 +33,25 @@
             <div class="col-md-6 mb-3">
                 <label for="difficulty" class="form-label">Difficulty</label>
                 <select class="form-select" id="difficulty" name="difficulty" required>
-                    <option value="easy" {% if challenge.difficulty == 'easy' %}selected{% endif %}>Easy</option>
-                    <option value="medium" {% if challenge.difficulty == 'medium' %}selected{% endif %}>Medium</option>
-                    <option value="hard" {% if challenge.difficulty == 'hard' %}selected{% endif %}>Hard</option>
+                    <option value="easy" {% if challenge.difficulty=='easy' %}selected{% endif %}>Easy</option>
+                    <option value="medium" {% if challenge.difficulty=='medium' %}selected{% endif %}>Medium</option>
+                    <option value="hard" {% if challenge.difficulty=='hard' %}selected{% endif %}>Hard</option>
                 </select>
                 <div class="invalid-feedback">Please select a difficulty level.</div>
             </div>
 
             <div class="col-md-6 mb-3">
                 <label for="points" class="form-label">Points</label>
-                <input type="number" class="form-control" id="points" name="points" min="100" max="1000" step="50" value="{{ challenge.points }}" required>
+                <input type="number" class="form-control" id="points" name="points" min="100" max="1000" step="50"
+                    value="{{ challenge.points }}" required>
                 <div class="invalid-feedback">Please enter points (100-1000).</div>
             </div>
         </div>
 
         <div class="mb-3">
             <label for="description" class="form-label">Challenge Description</label>
-            <textarea class="form-control" id="description" name="description" rows="3" required>{{ challenge.description }}</textarea>
+            <textarea class="form-control" id="description" name="description" rows="3"
+                required>{{ challenge.description }}</textarea>
             <div class="invalid-feedback">Please provide a challenge description.</div>
         </div>
 
@@ -57,10 +61,12 @@
             <div class="hint-entry mb-3">
                 <div class="row">
                     <div class="col-md-8">
-                        <input type="text" class="form-control" name="hints[]" value="{{ hint.text }}" placeholder="Hint text">
+                        <input type="text" class="form-control" name="hints[]" value="{{ hint.text }}"
+                            placeholder="Hint text">
                     </div>
                     <div class="col-md-3">
-                        <input type="number" class="form-control" name="hint_costs[]" value="{{ hint.cost }}" placeholder="Cost" min="0">
+                        <input type="number" class="form-control" name="hint_costs[]" value="{{ hint.cost }}"
+                            placeholder="Cost" min="0">
                     </div>
                     <div class="col-md-1">
                         <button type="button" class="btn btn-danger btn-sm remove-hint">×</button>
@@ -94,43 +100,43 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Form validation
-    const form = document.querySelector('.needs-validation');
-    form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        form.classList.add('was-validated');
-    });
-
-    // Dynamic hints management
-    const hintsContainer = document.getElementById('hints-container');
-    const addHintBtn = document.getElementById('add-hint');
-
-    addHintBtn.addEventListener('click', function() {
-        const hintEntry = document.querySelector('.hint-entry').cloneNode(true);
-        hintEntry.querySelector('input[name="hints[]"]').value = '';
-        hintEntry.querySelector('input[name="hint_costs[]"]').value = '';
-        
-        hintEntry.querySelector('.remove-hint').addEventListener('click', function() {
-            if (hintsContainer.querySelectorAll('.hint-entry').length > 1) {
-                this.closest('.hint-entry').remove();
+    document.addEventListener('DOMContentLoaded', function () {
+        // Form validation
+        const form = document.querySelector('.needs-validation');
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
             }
+            form.classList.add('was-validated');
         });
 
-        hintsContainer.appendChild(hintEntry);
-    });
+        // Dynamic hints management
+        const hintsContainer = document.getElementById('hints-container');
+        const addHintBtn = document.getElementById('add-hint');
 
-    // Initial remove hint button functionality
-    document.querySelectorAll('.remove-hint').forEach(button => {
-        button.addEventListener('click', function() {
-            if (hintsContainer.querySelectorAll('.hint-entry').length > 1) {
-                this.closest('.hint-entry').remove();
-            }
+        addHintBtn.addEventListener('click', function () {
+            const hintEntry = document.querySelector('.hint-entry').cloneNode(true);
+            hintEntry.querySelector('input[name="hints[]"]').value = '';
+            hintEntry.querySelector('input[name="hint_costs[]"]').value = '';
+
+            hintEntry.querySelector('.remove-hint').addEventListener('click', function () {
+                if (hintsContainer.querySelectorAll('.hint-entry').length > 1) {
+                    this.closest('.hint-entry').remove();
+                }
+            });
+
+            hintsContainer.appendChild(hintEntry);
+        });
+
+        // Initial remove hint button functionality
+        document.querySelectorAll('.remove-hint').forEach(button => {
+            button.addEventListener('click', function () {
+                if (hintsContainer.querySelectorAll('.hint-entry').length > 1) {
+                    this.closest('.hint-entry').remove();
+                }
+            });
         });
     });
-});
 </script>
-{% endblock %} 
+{% endblock %}

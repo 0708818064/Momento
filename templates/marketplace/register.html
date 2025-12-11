@@ -10,16 +10,17 @@
                 </div>
                 <div class="card-body">
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% endwith %}
 
                     <form method="POST" action="{{ url_for('marketplace.register_seller') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="business_name" class="form-label">Business Name</label>
                             <input type="text" class="form-control" id="business_name" name="business_name" required>
@@ -51,4 +52,4 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

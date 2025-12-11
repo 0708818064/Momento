@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+{% block title %}Dice Roll - {{ challenge.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dice-container {
+        perspective: 600px;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+
+    .dice {
+        width: 150px;
+        height: 150px;
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 1s ease-out;
+    }
+
+    .dice.rolling {
+        animation: roll 1s infinite linear;
+    }
+
+    @keyframes roll {
+        0% {
+            transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+        }
+
+        25% {
+            transform: rotateX(90deg) rotateY(45deg) rotateZ(45deg);
+        }
+
+        50% {
+            transform: rotateX(180deg) rotateY(90deg) rotateZ(90deg);
+        }
+
+        75% {
+            transform: rotateX(270deg) rotateY(135deg) rotateZ(135deg);
+        }
+
+        100% {
+            transform: rotateX(360deg) rotateY(180deg) rotateZ(180deg);
+        }
+    }
+
+    .dice-face {
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        background: linear-gradient(135deg, #ffffff 0%, #e8e8e8 100%);
+        border: 3px solid #333;
+        border-radius: 15px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 3rem;
+        font-weight: bold;
+        color: var(--accent-primary);
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .dice-face.front {
+        transform: rotateY(0deg) translateZ(75px);
+    }
+
+    .dice-face.back {
+        transform: rotateY(180deg) translateZ(75px);
+    }
+
+    .dice-face.right {
+        transform: rotateY(90deg) translateZ(75px);
+    }
+
+    .dice-face.left {
+        transform: rotateY(-90deg) translateZ(75px);
+    }
+
+    .dice-face.top {
+        transform: rotateX(90deg) translateZ(75px);
+    }
+
+    .dice-face.bottom {
+        transform: rotateX(-90deg) translateZ(75px);
+    }
+
+    .dot {
+        width: 20px;
+        height: 20px;
+        background: #1a1a2e;
+        border-radius: 50%;
+        position: absolute;
+    }
+
+    .dots-container {
+        position: relative;
+        width: 100px;
+        height: 100px;
+    }
+
+    /* Dot positions for each face */
+    .dot.center {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .dot.top-left {
+        top: 15%;
+        left: 15%;
+    }
+
+    .dot.top-right {
+        top: 15%;
+        right: 15%;
+    }
+
+    .dot.middle-left {
+        top: 50%;
+        left: 15%;
+        transform: translateY(-50%);
+    }
+
+    .dot.middle-right {
+        top: 50%;
+        right: 15%;
+        transform: translateY(-50%);
+    }
+
+    .dot.bottom-left {
+        bottom: 15%;
+        left: 15%;
+    }
+
+    .dot.bottom-right {
+        bottom: 15%;
+        right: 15%;
+    }
+
+    .roll-btn {
+        font-size: 1.25rem;
+        padding: 1rem 3rem;
+        border-radius: 3rem;
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        border: none;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .roll-btn:hover:not(:disabled) {
+        transform: scale(1.05);
+        box-shadow: 0 5px 20px rgba(99, 102, 241, 0.5);
+    }
+
+    .roll-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .result-display {
+        font-size: 2rem;
+        font-family: monospace;
+        letter-spacing: 0.5rem;
+        color: var(--accent-success);
+    }
+
+    .dice-info {
+        background: var(--bg-tertiary);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .roll-result {
+        font-size: 4rem;
+        font-weight: bold;
+        color: var(--accent-warning);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-dice me-2" style="color: var(--accent-primary);"></i>
+                Dice Roll
+            </h2>
+            <p class="text-muted mb-0">Roll the dice to reveal {{ key_part_length }} key character(s)</p>
+        </div>
+        <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}" class="btn btn-outline-custom">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <div class="card-dark">
+        <div class="card-body py-5">
+            <div class="text-center">
+                <!-- Dice Info -->
+                <div class="dice-info">
+                    <p class="mb-0"><i class="fas fa-info-circle me-2"></i>Roll the dice! Any roll reveals your key
+                        characters.</p>
+                </div>
+
+                <!-- 3D Dice -->
+                <div class="dice-container mb-4">
+                    <div class="dice" id="dice">
+                        <!-- Face 1 -->
+                        <div class="dice-face front">
+                            <div class="dots-container">
+                                <div class="dot center"></div>
+                            </div>
+                        </div>
+                        <!-- Face 2 -->
+                        <div class="dice-face back">
+                            <div class="dots-container">
+                                <div class="dot top-left"></div>
+                                <div class="dot bottom-right"></div>
+                            </div>
+                        </div>
+                        <!-- Face 3 -->
+                        <div class="dice-face right">
+                            <div class="dots-container">
+                                <div class="dot top-left"></div>
+                                <div class="dot center"></div>
+                                <div class="dot bottom-right"></div>
+                            </div>
+                        </div>
+                        <!-- Face 4 -->
+                        <div class="dice-face left">
+                            <div class="dots-container">
+                                <div class="dot top-left"></div>
+                                <div class="dot top-right"></div>
+                                <div class="dot bottom-left"></div>
+                                <div class="dot bottom-right"></div>
+                            </div>
+                        </div>
+                        <!-- Face 5 -->
+                        <div class="dice-face top">
+                            <div class="dots-container">
+                                <div class="dot top-left"></div>
+                                <div class="dot top-right"></div>
+                                <div class="dot center"></div>
+                                <div class="dot bottom-left"></div>
+                                <div class="dot bottom-right"></div>
+                            </div>
+                        </div>
+                        <!-- Face 6 -->
+                        <div class="dice-face bottom">
+                            <div class="dots-container">
+                                <div class="dot top-left"></div>
+                                <div class="dot top-right"></div>
+                                <div class="dot middle-left"></div>
+                                <div class="dot middle-right"></div>
+                                <div class="dot bottom-left"></div>
+                                <div class="dot bottom-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Roll Result -->
+                <div id="rollResultDisplay" style="display: none;" class="mb-3">
+                    <span class="text-muted">You rolled:</span>
+                    <span class="roll-result" id="rollValue"></span>
+                </div>
+
+                <!-- Roll Button -->
+                <button class="roll-btn mb-4" id="rollBtn" onclick="rollDice()">
+                    <i class="fas fa-dice me-2"></i>ROLL!
+                </button>
+
+                <!-- Result Display -->
+                <div id="resultArea" style="display: none;">
+                    <div class="alert alert-dark-success py-4">
+                        <h4 class="mb-2"><i class="fas fa-check-circle me-2"></i>Key Part Revealed!</h4>
+                        <div class="result-display" id="revealedPart"></div>
+                    </div>
+                    <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}"
+                        class="btn btn-primary-custom btn-lg">
+                        <i class="fas fa-arrow-right me-2"></i>Continue
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let rolling = false;
+
+    // Dice face rotations
+    const faceRotations = {
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(0deg) rotateY(180deg)',
+        3: 'rotateX(0deg) rotateY(-90deg)',
+        4: 'rotateX(0deg) rotateY(90deg)',
+        5: 'rotateX(-90deg) rotateY(0deg)',
+        6: 'rotateX(90deg) rotateY(0deg)'
+    };
+
+    function rollDice() {
+        if (rolling) return;
+        rolling = true;
+
+        const dice = document.getElementById('dice');
+        const btn = document.getElementById('rollBtn');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Rolling...';
+
+        // Start rolling animation
+        dice.classList.add('rolling');
+
+        // Random result 1-6
+        const result = Math.floor(Math.random() * 6) + 1;
+
+        // Stop rolling after 2 seconds
+        setTimeout(() => {
+            dice.classList.remove('rolling');
+
+            // Set final position based on result
+            dice.style.transform = faceRotations[result];
+
+            // Show roll result
+            document.getElementById('rollValue').textContent = result;
+            document.getElementById('rollResultDisplay').style.display = 'block';
+
+            // Call complete endpoint after dice settles
+            setTimeout(() => {
+                fetch('{{ url_for("minigames.wheel_complete", challenge_id=challenge.id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('revealedPart').textContent = data.revealed_part;
+                            document.getElementById('resultArea').style.display = 'block';
+                            btn.style.display = 'none';
+                        } else {
+                            alert(data.message);
+                            rolling = false;
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-dice me-2"></i>ROLL!';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        rolling = false;
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-dice me-2"></i>ROLL!';
+                    });
+            }, 500);
+        }, 2000);
+    }
+</script>
+{% endblock %}

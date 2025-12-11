@@ -11,7 +11,7 @@
                     </div>
                     <h2 class="card-title">Order Confirmed!</h2>
                     <p class="card-text">Thank you for your purchase.</p>
-                    
+
                     <div class="alert alert-success">
                         <h5>Transaction Details</h5>
                         <p class="mb-1">Transaction ID: {{ payment.transaction_id }}</p>
@@ -27,12 +27,12 @@
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-4">
-                                    {% if payment.product.image_filename %}
-                                    <img src="{{ url_for('marketplace.product_image', filename=payment.product.image_filename) }}" 
-                                         class="img-fluid rounded" alt="{{ payment.product.name }}">
+                                    {% if payment.product.image_path %}
+                                    <img src="{{ url_for('marketplace.product_image', filename=payment.product.image_path) }}"
+                                        class="img-fluid rounded" alt="{{ payment.product.name }}">
                                     {% else %}
-                                    <div class="bg-light d-flex align-items-center justify-content-center" 
-                                         style="height: 150px;">
+                                    <div class="bg-light d-flex align-items-center justify-content-center"
+                                        style="height: 150px;">
                                         <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
                                     </div>
                                     {% endif %}
@@ -41,7 +41,8 @@
                                     <h5>{{ payment.product.name }}</h5>
                                     <p>{{ payment.product.description }}</p>
                                     <p class="mb-0">
-                                        <small class="text-muted">Sold by: {{ payment.product.seller.business_name }}</small>
+                                        <small class="text-muted">Sold by: {{ payment.product.seller.business_name
+                                            }}</small>
                                     </p>
                                 </div>
                             </div>
@@ -49,11 +50,12 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-primary">Continue Shopping</a>
+                        <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-primary">Continue
+                            Shopping</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %} 
+{% endblock %}

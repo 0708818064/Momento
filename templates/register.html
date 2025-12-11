@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Register</title>
     <style>
@@ -13,19 +14,22 @@
         /* Styles for buttons, labels, inputs, etc. */
 
         #message {
-            color: red; /* Style for displaying messages */
+            color: red;
+            /* Style for displaying messages */
             margin-top: 10px;
         }
     </style>
 </head>
+
 <body>
     <h1>Register</h1>
     <div id="message">
         {% if message %}
-            {{ message }}
+        {{ message }}
         {% endif %}
     </div>
     <form method="POST" action="{{ url_for('register') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="username">Username:</label><br>
         <input type="text" id="username" name="username" required><br><br>
         <label for="password">Password:</label><br>
@@ -33,4 +37,5 @@
         <button type="submit">Register</button>
     </form>
 </body>
+
 </html>

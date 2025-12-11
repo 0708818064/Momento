@@ -19,6 +19,9 @@ from routes.marketplace import marketplace_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.profile import profile_bp
+from routes.minigames import minigames_bp
+from routes.biometric import biometric_bp
+from routes.messages import messages_bp, Message
 from core.auth.models import User
 from core.database import db_session, init_db
 from core.email.service import mail
@@ -36,15 +39,9 @@ app = Flask(__name__)
 
 # Configure app
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
-app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER')
 app.config["SESSION_TYPE"] = "filesystem"
 
-# Initialize Flask-Mail
+# Initialize email service (Brevo API)
 mail.init_app(app)
 
 # Stripe configuration
@@ -53,7 +50,13 @@ app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY')
 app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 # Initialize CSRF protection
-# csrf = CSRFProtect(app)  # Temporarily disabled for testing
+csrf = CSRFProtect(app)
+
+# Exempt biometric API routes from CSRF (they use their own security with WebAuthn)
+csrf.exempt(biometric_bp)
+
+# Exempt minigames routes from CSRF (AJAX game completion requests)
+csrf.exempt(minigames_bp)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -69,9 +72,42 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(marketplace_bp)
 app.register_blueprint(profile_bp)
+app.register_blueprint(minigames_bp)
+app.register_blueprint(biometric_bp)
+app.register_blueprint(messages_bp)
 
 # Initialize database
 init_db()
+
+# Cleanup database sessions after requests
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db_session.remove()
+
+
+# --- Create/Update Admin User from .env ---
+admin_username = os.getenv('ADMIN_USERNAME')
+admin_password = os.getenv('ADMIN_PASSWORD')
+if admin_username and admin_password:
+    existing_admin = User.query.filter_by(username=admin_username).first()
+    if not existing_admin:
+        admin_user = User(
+            username=admin_username,
+            password_hash=generate_password_hash(admin_password),
+            email=os.getenv('MAIL_DEFAULT_SENDER', f'{admin_username}@admin.local'),
+            is_admin=True,
+            is_active=True,
+            email_verified=True
+        )
+        db_session.add(admin_user)
+        db_session.commit()
+        print(f"Admin user '{admin_username}' created from .env")
+    else:
+        # Update existing admin user password if needed
+        if not existing_admin.is_admin:
+            existing_admin.is_admin = True
+            db_session.commit()
+            print(f"User '{admin_username}' promoted to admin from .env")
 
 # --- Initialize default challenges here, to make sure they exists at startup ---
 try:
@@ -139,12 +175,19 @@ def logout():
 def list_challenges():
     """List all available challenges."""
     verification_mode = request.args.get('mode', None)
+    category = request.args.get('category', None)
     challenges = challenge_manager.get_all_challenges()
+    
+    # Filter by category if specified
+    if category:
+        category_lower = category.lower()
+        challenges = {k: v for k, v in challenges.items() 
+                      if v.get('category', '').lower() == category_lower}
     
     if verification_mode == 'buyer':
         # Filter for easy challenges only
         challenges = {k: v for k, v in challenges.items() if v['difficulty'] == 'easy'}
-        buyer = Buyer.query.filter_by(user_id=current_user.id).first()
+        buyer = Buyer.query.filter_by(user_id=current_user.username).first()
         if buyer:
             solved_challenges = sum(1 for c in challenges.values() if c['id'] in buyer.solved_challenges)
             progress = f"{solved_challenges}/3 easy challenges completed"
@@ -153,7 +196,7 @@ def list_challenges():
     elif verification_mode == 'seller':
         # Filter for hard challenges only
         challenges = {k: v for k, v in challenges.items() if v['difficulty'] == 'hard'}
-        seller = Seller.query.filter_by(user_id=current_user.id).first()
+        seller = Seller.query.filter_by(user_id=current_user.username).first()
         if seller:
             solved_challenges = sum(1 for c in challenges.values() if c['id'] in seller.solved_challenges)
             progress = f"{solved_challenges}/5 hard challenges completed"
@@ -165,7 +208,8 @@ def list_challenges():
     return render_template('challenges.html', 
                          challenges=challenges,
                          verification_mode=verification_mode,
-                         progress=progress)
+                         progress=progress,
+                         category=category)
 
 @app.route("/challenge/<challenge_id>", methods=["GET"])
 @login_required
@@ -192,19 +236,19 @@ def view_challenge(challenge_id):
 @login_required
 def submit_flag(challenge_id):
     """Submit a flag for a challenge."""
+    verification_mode = request.args.get('mode', None)
     flag = request.form.get('flag')
     if not flag:
         flash('Please provide a flag.', 'error')
-        return redirect(url_for('view_challenge', challenge_id=challenge_id))
+        return redirect(url_for('view_challenge', challenge_id=challenge_id, mode=verification_mode))
 
     success, message = challenge_manager.submit_flag(challenge_id, current_user.username, flag)
     flash(message, 'success' if success else 'error')
 
     if success:
         # Update user's solved challenges
-        verification_mode = request.args.get('mode', None)
         if verification_mode == 'buyer':
-            buyer = Buyer.query.filter_by(user_id=current_user.id).first()
+            buyer = Buyer.query.filter_by(user_id=current_user.username).first()
             if buyer:
                 buyer.add_solved_challenge(challenge_id)
                 db_session.commit()
@@ -213,16 +257,16 @@ def submit_flag(challenge_id):
                     flash('Congratulations! You have completed enough challenges to view products.', 'success')
                     return redirect(url_for('marketplace.view_products'))
         elif verification_mode == 'seller':
-            seller = Seller.query.filter_by(user_id=current_user.id).first()
+            seller = Seller.query.filter_by(user_id=current_user.username).first()
             if seller:
-                seller.add_solved_challenge(challenge_id)
+                seller.add_solved_challenge(challenge_id, is_hard=True)
                 db_session.commit()
                 # Check if seller has completed enough challenges
                 if seller.is_verified >= 5:
                     flash('Congratulations! You have completed enough challenges to sell products.', 'success')
                     return redirect(url_for('marketplace.create_product'))
 
-    return redirect(url_for('view_challenge', challenge_id=challenge_id))
+    return redirect(url_for('view_challenge', challenge_id=challenge_id, mode=verification_mode))
 
 @app.route("/challenge/<challenge_id>/hint", methods=["POST"])
 @login_required
@@ -236,11 +280,17 @@ def show_hint(challenge_id):
 # --- Index ---
 @app.route("/")
 def index():
-    return render_template("index.html")
+    buyer = None
+    seller = None
+    if current_user.is_authenticated:
+        buyer = Buyer.query.filter_by(user_id=current_user.username).first()
+        seller = Seller.query.filter_by(user_id=current_user.username).first()
+    return render_template("index.html", buyer=buyer, seller=seller)
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session.remove()
 
 if __name__ == "__main__":
-    app.run(debug=True)  
+    # Run on 0.0.0.0 to allow access from other devices on the network
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-white mb-4"><i class="fas fa-truck me-2"></i>Orders to Fulfill</h2>
+
+    {% if orders %}
+    <div class="card-dark">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Product</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td class="text-white">#{{ order.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if order.product.image_path %}
+                                <img src="{{ url_for('marketplace.product_image', filename=order.product.image_path) }}"
+                                    class="me-2"
+                                    style="width: 40px; height: 40px; object-fit: cover; border-radius: 0.25rem;">
+                                {% endif %}
+                                <span class="text-white">{{ order.product.name[:30] }}{% if order.product.name|length >
+                                    30 %}...{% endif %}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-white">{{ order.buyer.display_name }}</span>
+                            <br><small class="text-muted">{{ order.phone_number }}</small>
+                        </td>
+                        <td class="text-white">KES {{ "%.2f"|format(order.total_amount) }}</td>
+                        <td>
+                            {% if order.payment and order.payment.status.value == 'completed' %}
+                            <span class="badge" style="background: #4CAF50;">Paid</span>
+                            {% if order.mpesa_receipt_number %}
+                            <br><small class="text-muted">{{ order.mpesa_receipt_number }}</small>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge" style="background: #f59e0b;">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST"
+                                action="{{ url_for('marketplace.update_order_status', order_id=order.id) }}"
+                                class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <select name="status" class="form-select form-select-sm"
+                                    style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary); width: auto;"
+                                    onchange="this.form.submit()">
+                                    <option value="pending" {% if order.delivery_status.value=='pending' %}selected{%
+                                        endif %}>Pending</option>
+                                    <option value="processing" {% if order.delivery_status.value=='processing'
+                                        %}selected{% endif %}>Processing</option>
+                                    <option value="shipped" {% if order.delivery_status.value=='shipped' %}selected{%
+                                        endif %}>Shipped</option>
+                                    <option value="delivered" {% if order.delivery_status.value=='delivered'
+                                        %}selected{% endif %}>Delivered</option>
+                                    <option value="cancelled" {% if order.delivery_status.value=='cancelled'
+                                        %}selected{% endif %}>Cancelled</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td class="text-muted">{{ order.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-custom" data-bs-toggle="modal"
+                                data-bs-target="#orderModal{{ order.id }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Order Details Modal -->
+                    <div class="modal fade" id="orderModal{{ order.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content"
+                                style="background: var(--bg-secondary); border: 1px solid var(--border-color);">
+                                <div class="modal-header" style="border-color: var(--border-color);">
+                                    <h5 class="modal-title text-white">Order #{{ order.id }} Details</h5>
+                                    <button type="button" class="btn-close btn-close-white"
+                                        data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <h6 class="text-muted">Customer</h6>
+                                    <p class="text-white">{{ order.buyer.display_name }}</p>
+
+                                    <h6 class="text-muted">Phone</h6>
+                                    <p class="text-white">{{ order.phone_number }}</p>
+
+                                    {% if order.delivery_address %}
+                                    <h6 class="text-muted">Delivery Address</h6>
+                                    <p class="text-white">{{ order.delivery_address }}</p>
+                                    {% endif %}
+
+                                    <h6 class="text-muted">Product</h6>
+                                    <p class="text-white">{{ order.product.name }} × {{ order.quantity }}</p>
+
+                                    <h6 class="text-muted">Total</h6>
+                                    <p class="text-white h5">KES {{ "%.2f"|format(order.total_amount) }}</p>
+                                </div>
+                                <div class="modal-footer" style="border-color: var(--border-color);">
+                                    <button type="button" class="btn btn-outline-custom"
+                                        data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card-dark text-center py-5">
+        <i class="fas fa-inbox text-muted" style="font-size: 4rem;"></i>
+        <h4 class="text-white mt-3">No Orders Yet</h4>
+        <p class="text-muted">Orders for your products will appear here.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

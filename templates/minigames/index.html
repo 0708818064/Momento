@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-gamepad me-2"></i>Minigames</h4>
+                    <a href="{{ url_for('list_challenges') }}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back to Challenges
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>How it works:</strong> Complete minigames to reveal encryption keys that help you solve
+                        challenges!
+                    </div>
+
+                    {% if challenges %}
+                    <div class="row g-4">
+                        {% for challenge in challenges %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 category-card">
+                                <div class="card-body text-center">
+                                    <div class="mb-3">
+                                        {% if challenge.type == 'caesar' %}
+                                        <i class="fas fa-font fa-2x" style="color: var(--accent-primary);"></i>
+                                        {% elif challenge.type == 'aes' %}
+                                        <i class="fas fa-lock fa-2x" style="color: var(--accent-success);"></i>
+                                        {% elif challenge.type == 'rsa' %}
+                                        <i class="fas fa-key fa-2x" style="color: var(--accent-warning);"></i>
+                                        {% elif challenge.type == 'vigenere' %}
+                                        <i class="fas fa-spell-check fa-2x" style="color: var(--accent-secondary);"></i>
+                                        {% else %}
+                                        <i class="fas fa-puzzle-piece fa-2x" style="color: var(--accent-primary);"></i>
+                                        {% endif %}
+                                    </div>
+                                    <h5 class="text-white">{{ challenge.id }}</h5>
+                                    <p class="text-muted small mb-3">
+                                        <span
+                                            class="badge bg-{% if challenge.difficulty == 'easy' %}success{% elif challenge.difficulty == 'medium' %}warning{% else %}danger{% endif %}">
+                                            {{ challenge.difficulty }}
+                                        </span>
+                                        <span class="badge bg-secondary">{{ challenge.type }}</span>
+                                    </p>
+                                    <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}"
+                                        class="btn btn-outline-custom btn-sm">
+                                        <i class="fas fa-play me-1"></i>Play Minigames
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-gamepad fa-4x text-muted mb-4"></i>
+                        <h4 class="text-muted">No Challenges Available</h4>
+                        <p class="text-muted">Complete some challenges first to unlock minigames!</p>
+                        <a href="{{ url_for('list_challenges') }}" class="btn btn-primary">
+                            <i class="fas fa-trophy me-2"></i>View Challenges
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

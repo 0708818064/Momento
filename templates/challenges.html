@@ -3,61 +3,116 @@
 {% block content %}
 <div class="container mt-4">
     {% if verification_mode %}
-        <div class="alert alert-info">
-            {% if verification_mode == 'buyer' %}
-                <h4>Buyer Verification Mode</h4>
-                <p>Complete 3 easy challenges to become a verified buyer.</p>
-                {% if progress %}
-                    <p><strong>Progress:</strong> {{ progress }}</p>
+    <div class="alert alert-info">
+        {% if verification_mode == 'buyer' %}
+        <h4>Buyer Verification Mode</h4>
+        <p>Complete 3 easy challenges to become a verified buyer.</p>
+        {% if progress %}
+        <p><strong>Progress:</strong> {{ progress }}</p>
+        {% endif %}
+        {% else %}
+        <h4>Seller Verification Mode</h4>
+        <p>Complete 5 hard challenges to become a verified seller.</p>
+        {% if progress %}
+        <p><strong>Progress:</strong> {{ progress }}</p>
+        {% endif %}
+        {% endif %}
+        <a href="{{ url_for('list_challenges') }}" class="btn btn-outline-primary">View All Challenges</a>
+    </div>
+    {% elif category %}
+    <!-- Category Filter Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                {% if category == 'crypto' %}
+                <i class="fas fa-lock me-2" style="color: var(--accent-primary);"></i>Cryptography Challenges
+                {% elif category == 'binary' %}
+                <i class="fas fa-code me-2" style="color: var(--accent-secondary);"></i>Binary Exploitation Challenges
+                {% elif category == 'forensics' %}
+                <i class="fas fa-search me-2" style="color: var(--accent-success);"></i>Digital Forensics Challenges
+                {% elif category == 'web' %}
+                <i class="fas fa-globe me-2" style="color: var(--accent-warning);"></i>Web Security Challenges
+                {% elif category == 'hash' %}
+                <i class="fas fa-hashtag me-2" style="color: var(--accent-danger);"></i>Hash Cracking Challenges
+                {% else %}
+                {{ category|title }} Challenges
                 {% endif %}
-            {% else %}
-                <h4>Seller Verification Mode</h4>
-                <p>Complete 5 hard challenges to become a verified seller.</p>
-                {% if progress %}
-                    <p><strong>Progress:</strong> {{ progress }}</p>
-                {% endif %}
-            {% endif %}
-            <a href="{{ url_for('list_challenges') }}" class="btn btn-outline-primary">View All Challenges</a>
+            </h2>
+            <p class="text-muted mb-0">{{ challenges|length }} challenge(s) available</p>
         </div>
+        <a href="{{ url_for('list_challenges') }}" class="btn btn-outline-custom">
+            <i class="fas fa-th me-1"></i>View All Categories
+        </a>
+    </div>
     {% else %}
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Buyer Verification</h5>
-                        <p class="card-text">Complete 3 easy challenges to become a verified buyer.</p>
-                        <a href="{{ url_for('list_challenges', mode='buyer') }}" class="btn btn-primary">Start Buyer Verification</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Seller Verification</h5>
-                        <p class="card-text">Complete 5 hard challenges to become a verified seller.</p>
-                        <a href="{{ url_for('list_challenges', mode='seller') }}" class="btn btn-primary">Start Seller Verification</a>
-                    </div>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Buyer Verification</h5>
+                    <p class="card-text">Complete 3 easy challenges to become a verified buyer.</p>
+                    <a href="{{ url_for('list_challenges', mode='buyer') }}" class="btn btn-primary">Start Buyer
+                        Verification</a>
                 </div>
             </div>
         </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Seller Verification</h5>
+                    <p class="card-text">Complete 5 hard challenges to become a verified seller.</p>
+                    <a href="{{ url_for('list_challenges', mode='seller') }}" class="btn btn-primary">Start Seller
+                        Verification</a>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
+    {% if not category %}
     <h2>Available Challenges</h2>
+    {% endif %}
+
+    {% if challenges %}
     <div class="row">
         {% for challenge_id, challenge in challenges.items() %}
-            <div class="col-md-4 mb-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ challenge.id }}</h5>
-                        <span class="badge {% if challenge.difficulty == 'easy' %}bg-success{% elif challenge.difficulty == 'medium' %}bg-warning{% else %}bg-danger{% endif %}">
-                            {{ challenge.difficulty }}
-                        </span>
-                        <p class="card-text mt-2">{{ challenge.description }}</p>
-                        <a href="{{ url_for('view_challenge', challenge_id=challenge.id, mode=verification_mode) }}" class="btn btn-primary">View Challenge</a>
-                    </div>
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ challenge.id }}</h5>
+                    <span
+                        class="badge {% if challenge.difficulty == 'easy' %}bg-success{% elif challenge.difficulty == 'medium' %}bg-warning{% else %}bg-danger{% endif %}">
+                        {{ challenge.difficulty }}
+                    </span>
+                    {% if challenge.category %}
+                    <span class="badge bg-secondary ms-1">{{ challenge.category }}</span>
+                    {% endif %}
+                    <p class="card-text mt-2">{{ challenge.description }}</p>
+                    <a href="{{ url_for('view_challenge', challenge_id=challenge.id, mode=verification_mode) }}"
+                        class="btn btn-primary">View Challenge</a>
                 </div>
             </div>
+        </div>
         {% endfor %}
     </div>
+    {% else %}
+    <!-- No Challenges Message -->
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+            <h4>No challenges available</h4>
+            <p class="text-muted mb-4">
+                {% if category %}
+                There are no {{ category }} challenges at the moment. Check back later or explore other categories!
+                {% else %}
+                No challenges found. Check back soon for new challenges!
+                {% endif %}
+            </p>
+            <a href="{{ url_for('list_challenges') }}" class="btn btn-primary-custom">
+                <i class="fas fa-th me-1"></i>View All Challenges
+            </a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

@@ -3,131 +3,150 @@
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
+        <div class="col-lg-8">
+            <div class="card-dark">
                 <div class="card-header">
-                    <h3 class="card-title mb-0">Checkout</h3>
+                    <h3 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Checkout</h3>
                 </div>
                 <div class="card-body">
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% endwith %}
 
+                    <!-- Order Summary -->
                     <div class="mb-4">
-                        <h4>Order Summary</h4>
-                        <div class="card mb-3">
+                        <h5 class="text-white mb-3"><i class="fas fa-receipt me-2"></i>Order Summary</h5>
+                        <div class="card-dark" style="border: 1px solid var(--border-color);">
                             <div class="row g-0">
                                 <div class="col-md-4">
-                                    {% if product.image_filename %}
-                                    <img src="{{ url_for('marketplace.product_image', filename=product.image_filename) }}" 
-                                         class="img-fluid rounded-start" alt="{{ product.name }}">
+                                    {% if product.image_path %}
+                                    <img src="{{ url_for('marketplace.product_image', filename=product.image_path) }}"
+                                        class="img-fluid rounded-start" alt="{{ product.name }}"
+                                        style="max-height: 200px; object-fit: cover;">
                                     {% else %}
-                                    <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                    <div class="d-flex align-items-center justify-content-center h-100"
+                                        style="background: var(--bg-tertiary); min-height: 150px;">
                                         <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
                                     </div>
                                     {% endif %}
                                 </div>
                                 <div class="col-md-8">
                                     <div class="card-body">
-                                        <h5 class="card-title">{{ product.name }}</h5>
-                                        <p class="card-text">{{ product.description }}</p>
-                                        <p class="card-text">
-                                            <small class="text-muted">Seller: {{ product.seller.business_name }}</small>
+                                        <h5 class="text-white">{{ product.name }}</h5>
+                                        <p class="text-muted small">{{ product.description[:100] }}{% if
+                                            product.description|length > 100 %}...{% endif %}</p>
+                                        <p class="text-muted small mb-2">
+                                            <i class="fas fa-store me-1"></i>Seller: {{ product.seller.business_name }}
                                         </p>
-                                        <p class="h4 text-primary">${{ "%.2f"|format(product.price) }}</p>
+                                        <p class="h4" style="color: var(--accent-success);">KES {{
+                                            "%.2f"|format(product.price) }}</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <form method="POST" action="{{ url_for('marketplace.process_payment', product_id=product.id) }}" class="needs-validation" novalidate>
+                    <form method="POST" action="{{ url_for('marketplace.checkout', product_id=product.id) }}"
+                        class="needs-validation" novalidate id="checkoutForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="price_check" value="{{ product.price }}">
-                        
+
+                        <!-- Payment Method Selection -->
                         <div class="mb-4">
-                            <h4>Payment Method</h4>
+                            <h5 class="text-white mb-3"><i class="fas fa-credit-card me-2"></i>Payment Method</h5>
+                            <div class="row g-3">
+                                <!-- M-Pesa Option -->
+                                <div class="col-md-4">
+                                    <div class="payment-option" onclick="selectPayment('mpesa')">
+                                        <input class="form-check-input d-none" type="radio" name="payment_method_id"
+                                            id="mpesa" value="mpesa" checked>
+                                        <label class="payment-card" for="mpesa" id="mpesa-card">
+                                            <div class="payment-icon"
+                                                style="background: linear-gradient(135deg, #4CAF50, #2E7D32);">
+                                                <i class="fas fa-mobile-alt"></i>
+                                            </div>
+                                            <span class="payment-name">M-Pesa</span>
+                                            <span class="payment-desc">Pay via STK Push</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Stripe Option -->
+                                <div class="col-md-4">
+                                    <div class="payment-option" onclick="selectPayment('stripe')">
+                                        <input class="form-check-input d-none" type="radio" name="payment_method_id"
+                                            id="stripe" value="stripe">
+                                        <label class="payment-card" for="stripe" id="stripe-card">
+                                            <div class="payment-icon"
+                                                style="background: linear-gradient(135deg, #635bff, #4f46e5);">
+                                                <i class="fas fa-credit-card"></i>
+                                            </div>
+                                            <span class="payment-name">Credit Card</span>
+                                            <span class="payment-desc">Via Stripe</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <!-- Crypto Option -->
+                                <div class="col-md-4">
+                                    <div class="payment-option" onclick="selectPayment('crypto')">
+                                        <input class="form-check-input d-none" type="radio" name="payment_method_id"
+                                            id="crypto" value="crypto">
+                                        <label class="payment-card" for="crypto" id="crypto-card">
+                                            <div class="payment-icon"
+                                                style="background: linear-gradient(135deg, #f7931a, #ff6f00);">
+                                                <i class="fab fa-bitcoin"></i>
+                                            </div>
+                                            <span class="payment-name">Crypto</span>
+                                            <span class="payment-desc">BTC, ETH, etc.</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- M-Pesa Phone Number Input -->
+                        <div class="mb-4" id="mpesa-details">
+                            <h5 class="text-white mb-3"><i class="fas fa-phone me-2"></i>M-Pesa Details</h5>
                             <div class="row">
-                                {% if 'points' in product.accepted_payment_methods.split(',') %}
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check card p-3">
-                                        <input class="form-check-input" type="radio" name="payment_method" 
-                                               id="points" value="points" checked>
-                                        <label class="form-check-label" for="points">
-                                            <i class="fas fa-coins text-warning"></i> Points
-                                            <br>
-                                            <small class="text-muted">Balance: {{ buyer.points_balance }}</small>
-                                        </label>
+                                <div class="col-md-6">
+                                    <label for="phone_number" class="form-label text-muted">Phone Number</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"
+                                            style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">+254</span>
+                                        <input type="tel" class="form-control" id="phone_number" name="phone_number"
+                                            placeholder="712345678" pattern="[0-9]{9}" maxlength="9"
+                                            style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);">
                                     </div>
+                                    <small class="text-muted">Enter your Safaricom number</small>
                                 </div>
-                                {% endif %}
-
-                                {% if 'credit_card' in product.accepted_payment_methods.split(',') %}
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check card p-3">
-                                        <input class="form-check-input" type="radio" name="payment_method" 
-                                               id="credit_card" value="credit_card">
-                                        <label class="form-check-label" for="credit_card">
-                                            <i class="fas fa-credit-card text-primary"></i> Credit Card
-                                        </label>
-                                    </div>
+                                <div class="col-md-6">
+                                    <label for="delivery_address" class="form-label text-muted">Delivery Address</label>
+                                    <textarea class="form-control" id="delivery_address" name="delivery_address"
+                                        rows="2" placeholder="Enter your delivery address"
+                                        style="background: var(--bg-tertiary); border-color: var(--border-color); color: var(--text-primary);"></textarea>
                                 </div>
-                                {% endif %}
-
-                                {% if 'crypto' in product.accepted_payment_methods.split(',') %}
-                                <div class="col-md-4 mb-3">
-                                    <div class="form-check card p-3">
-                                        <input class="form-check-input" type="radio" name="payment_method" 
-                                               id="crypto" value="crypto">
-                                        <label class="form-check-label" for="crypto">
-                                            <i class="fab fa-bitcoin text-warning"></i> Cryptocurrency
-                                        </label>
-                                    </div>
-                                </div>
-                                {% endif %}
+                            </div>
+                            <div class="alert mt-3"
+                                style="background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; color: #4CAF50;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>How M-Pesa works:</strong> You'll receive a prompt on your phone to enter your
+                                M-Pesa PIN to complete the payment.
                             </div>
                         </div>
 
-                        <!-- Credit Card Details (shown/hidden based on selection) -->
-                        <div id="creditCardDetails" class="mb-4" style="display: none;">
-                            <h4>Card Details</h4>
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label for="card_number" class="form-label">Card Number</label>
-                                    <input type="text" class="form-control" id="card_number" name="card_number" 
-                                           pattern="[0-9]{16}" placeholder="1234 5678 9012 3456">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="expiry" class="form-label">Expiry Date</label>
-                                    <input type="text" class="form-control" id="expiry" name="expiry" 
-                                           pattern="(0[1-9]|1[0-2])\/([0-9]{2})" placeholder="MM/YY">
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="cvv" class="form-label">CVV</label>
-                                    <input type="text" class="form-control" id="cvv" name="cvv" 
-                                           pattern="[0-9]{3,4}" placeholder="123">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Crypto Payment Details (shown/hidden based on selection) -->
-                        <div id="cryptoDetails" class="mb-4" style="display: none;">
-                            <h4>Cryptocurrency Payment</h4>
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                After clicking "Pay Now", you'll be redirected to complete the crypto payment.
-                            </div>
-                        </div>
-
+                        <!-- Submit Buttons -->
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Pay Now</button>
-                            <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-outline-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-lg" id="payBtn"
+                                style="background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white;">
+                                <i class="fas fa-lock me-2"></i>Pay Now - KES {{ "%.2f"|format(product.price) }}
+                            </button>
+                            <a href="{{ url_for('marketplace.view_products') }}"
+                                class="btn btn-outline-custom">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -136,31 +155,89 @@
     </div>
 </div>
 
-<script>
-// Form validation
-(function () {
-    'use strict'
-    var forms = document.querySelectorAll('.needs-validation')
-    Array.prototype.slice.call(forms)
-        .forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-})()
+<style>
+    .payment-option {
+        cursor: pointer;
+    }
 
-// Payment method selection handling
-document.querySelectorAll('input[name="payment_method"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
-        document.getElementById('creditCardDetails').style.display = 
-            this.value === 'credit_card' ? 'block' : 'none';
-        document.getElementById('cryptoDetails').style.display = 
-            this.value === 'crypto' ? 'block' : 'none';
+    .payment-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1.5rem 1rem;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .payment-card:hover {
+        border-color: var(--accent-primary);
+        transform: translateY(-3px);
+    }
+
+    .payment-card.selected {
+        border-color: var(--accent-success);
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .payment-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+        color: white;
+        font-size: 1.25rem;
+    }
+
+    .payment-name {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .payment-desc {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+</style>
+
+<script>
+    function selectPayment(method) {
+        // Uncheck all and remove selected class
+        document.querySelectorAll('.payment-card').forEach(card => card.classList.remove('selected'));
+        document.querySelectorAll('input[name="payment_method_id"]').forEach(input => input.checked = false);
+
+        // Select the clicked option
+        document.getElementById(method).checked = true;
+        document.getElementById(method + '-card').classList.add('selected');
+
+        // Show/hide M-Pesa details
+        const mpesaDetails = document.getElementById('mpesa-details');
+        const payBtn = document.getElementById('payBtn');
+
+        if (method === 'mpesa') {
+            mpesaDetails.style.display = 'block';
+            payBtn.style.background = 'linear-gradient(135deg, #4CAF50, #2E7D32)';
+            payBtn.innerHTML = '<i class="fas fa-mobile-alt me-2"></i>Pay with M-Pesa - KES {{ "%.2f"|format(product.price) }}';
+        } else if (method === 'stripe') {
+            mpesaDetails.style.display = 'none';
+            payBtn.style.background = 'linear-gradient(135deg, #635bff, #4f46e5)';
+            payBtn.innerHTML = '<i class="fas fa-credit-card me-2"></i>Pay with Card - KES {{ "%.2f"|format(product.price) }}';
+        } else {
+            mpesaDetails.style.display = 'none';
+            payBtn.style.background = 'linear-gradient(135deg, #f7931a, #ff6f00)';
+            payBtn.innerHTML = '<i class="fab fa-bitcoin me-2"></i>Pay with Crypto - KES {{ "%.2f"|format(product.price) }}';
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        selectPayment('mpesa');
     });
-});
 </script>
-{% endblock %} 
+{% endblock %}

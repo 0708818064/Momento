@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-fingerprint"></i> Biometric Login Setup</h4>
+                </div>
+                <div class="card-body">
+                    <div id="messages"></div>
+
+                    {% if has_credential %}
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                        </div>
+                        <h5 class="text-success">Passkey Registered</h5>
+                        <p class="text-muted">You have a passkey registered. You can use biometric login on the login
+                            page.</p>
+
+                        <button id="removeBtn" class="btn btn-outline-danger mt-3">
+                            <i class="bi bi-trash"></i> Remove Passkey
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center mb-4">
+                        <div class="mb-3">
+                            <i class="bi bi-fingerprint" style="font-size: 3rem; color: #6c757d;"></i>
+                        </div>
+                        <h5>Set Up Biometric Login</h5>
+                        <p class="text-muted">
+                            Register a passkey to enable quick and secure login using your device's biometric features
+                            (fingerprint, Face ID, or device PIN).
+                        </p>
+
+                        <button id="registerBtn" class="btn btn-primary btn-lg mt-3">
+                            <i class="bi bi-plus-circle"></i> Register Passkey
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <div class="small text-muted">
+                        <h6>What is a Passkey?</h6>
+                        <p>
+                            Passkeys are a more secure and convenient alternative to passwords. They use your device's
+                            biometric sensors (fingerprint reader or facial recognition) or PIN to verify your identity.
+                        </p>
+                        <ul>
+                            <li><strong>Secure:</strong> Passkeys are cryptographically secure and cannot be phished
+                            </li>
+                            <li><strong>Convenient:</strong> No need to remember or type passwords</li>
+                            <li><strong>Device-bound:</strong> Your passkey is stored securely on this device</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <a href="{{ url_for('profile.view_profile') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showMessage(message, type) {
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    }
+
+    // Helper function to convert base64url to ArrayBuffer
+    function base64urlToBuffer(base64url) {
+        const padding = '='.repeat((4 - base64url.length % 4) % 4);
+        const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray.buffer;
+    }
+
+    // Helper function to convert ArrayBuffer to base64url
+    function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let str = '';
+        for (const byte of bytes) {
+            str += String.fromCharCode(byte);
+        }
+        return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    }
+
+    // Register passkey
+    const registerBtn = document.getElementById('registerBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', async () => {
+            try {
+                registerBtn.disabled = true;
+                registerBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Registering...';
+
+                // Get registration options from server
+                const optionsRes = await fetch('/biometric/register-options');
+                const options = await optionsRes.json();
+
+                if (options.error) {
+                    throw new Error(options.error);
+                }
+
+                // Convert base64url strings to ArrayBuffers
+                options.challenge = base64urlToBuffer(options.challenge);
+                options.user.id = base64urlToBuffer(options.user.id);
+                if (options.excludeCredentials) {
+                    options.excludeCredentials = options.excludeCredentials.map(cred => ({
+                        ...cred,
+                        id: base64urlToBuffer(cred.id)
+                    }));
+                }
+
+                // Create credential using WebAuthn API
+                const credential = await navigator.credentials.create({
+                    publicKey: options
+                });
+
+                // Prepare credential for sending to server
+                const credentialData = {
+                    id: credential.id,
+                    rawId: bufferToBase64url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        attestationObject: bufferToBase64url(credential.response.attestationObject),
+                        clientDataJSON: bufferToBase64url(credential.response.clientDataJSON),
+                    }
+                };
+
+                // Send to server for verification
+                const verifyRes = await fetch('/biometric/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(credentialData)
+                });
+
+                const result = await verifyRes.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    throw new Error(result.error || 'Registration failed');
+                }
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                showMessage('Error: ' + error.message, 'danger');
+                registerBtn.disabled = false;
+                registerBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Register Passkey';
+            }
+        });
+    }
+
+    // Remove passkey
+    const removeBtn = document.getElementById('removeBtn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to remove your passkey?')) {
+                return;
+            }
+
+            try {
+                removeBtn.disabled = true;
+
+                const res = await fetch('/biometric/remove', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await res.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    throw new Error(result.error || 'Failed to remove passkey');
+                }
+
+            } catch (error) {
+                showMessage('Error: ' + error.message, 'danger');
+                removeBtn.disabled = false;
+            }
+        });
+    }
+</script>
+{% endblock %}

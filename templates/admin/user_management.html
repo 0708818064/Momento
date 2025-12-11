@@ -11,13 +11,13 @@
         </div>
         <div class="card-body">
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}" role="alert">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }}" role="alert">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
             {% endwith %}
 
             <div class="table-responsive">
@@ -56,13 +56,18 @@
                             <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <form action="{{ url_for('admin.toggle_user_status', username=user.username) }}" method="POST" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-{% if user.is_active %}warning{% else %}success{% endif %} me-1">
+                                    <form action="{{ url_for('admin.toggle_user_status', username=user.username) }}"
+                                        method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit"
+                                            class="btn btn-sm btn-{% if user.is_active %}warning{% else %}success{% endif %} me-1">
                                             {{ "Deactivate" if user.is_active else "Activate" }}
                                         </button>
                                     </form>
                                     {% if not user.is_admin %}
-                                    <form action="{{ url_for('admin.make_admin', username=user.username) }}" method="POST" class="d-inline">
+                                    <form action="{{ url_for('admin.make_admin', username=user.username) }}"
+                                        method="POST" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm btn-danger">
                                             Make Admin
                                         </button>

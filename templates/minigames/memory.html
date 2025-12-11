@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Memory Match - {{ challenge.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .memory-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .memory-card {
+        aspect-ratio: 1;
+        perspective: 1000px;
+        cursor: pointer;
+    }
+
+    .memory-card-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        transition: transform 0.6s;
+        transform-style: preserve-3d;
+    }
+
+    .memory-card.flipped .memory-card-inner {
+        transform: rotateY(180deg);
+    }
+
+    .memory-card.matched .memory-card-inner {
+        transform: rotateY(180deg);
+    }
+
+    .memory-card.matched {
+        pointer-events: none;
+    }
+
+    .memory-card-front,
+    .memory-card-back {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        backface-visibility: hidden;
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .memory-card-front {
+        background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        color: white;
+    }
+
+    .memory-card-back {
+        background: var(--bg-tertiary);
+        transform: rotateY(180deg);
+        color: var(--text-primary);
+        border: 2px solid var(--border-color);
+    }
+
+    .memory-card.matched .memory-card-back {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: var(--accent-success);
+        color: var(--accent-success);
+    }
+
+    .stats-bar {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--accent-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-brain me-2" style="color: var(--accent-warning);"></i>
+                Memory Match
+            </h2>
+            <p class="text-muted mb-0">Find all matching pairs to reveal key characters</p>
+        </div>
+        <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}" class="btn btn-outline-custom">
+            <i class="fas fa-arrow-left me-1"></i>Back
+        </a>
+    </div>
+
+    <div class="card-dark">
+        <div class="card-body py-4">
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-value" id="matchCount">0</div>
+                    <div class="text-muted">Matches</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="moveCount">0</div>
+                    <div class="text-muted">Moves</div>
+                </div>
+            </div>
+
+            <!-- Memory Grid -->
+            <div class="memory-grid" id="memoryGrid">
+                {% for card in cards %}
+                <div class="memory-card" data-id="{{ card.id }}" data-value="{{ card.value }}"
+                    data-pair="{{ card.pair_id }}">
+                    <div class="memory-card-inner">
+                        <div class="memory-card-front">
+                            <i class="fas fa-question"></i>
+                        </div>
+                        <div class="memory-card-back">
+                            {{ card.value }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Result -->
+            <div id="resultArea" style="display: none;" class="mt-4 text-center">
+                <div class="alert alert-dark-success py-4">
+                    <h4 class="mb-2"><i class="fas fa-check-circle me-2"></i>All Pairs Found!</h4>
+                    <div style="font-size: 2rem; font-family: monospace; color: var(--accent-success);"
+                        id="revealedPart"></div>
+                </div>
+                <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}"
+                    class="btn btn-primary-custom btn-lg">
+                    <i class="fas fa-arrow-right me-2"></i>Continue
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const cards = document.querySelectorAll('.memory-card');
+    let flippedCards = [];
+    let matchedPairs = 0;
+    let moves = 0;
+    let isChecking = false;
+    const totalPairs = {{ (cards | length) // 2 }};
+
+    cards.forEach(card => {
+        card.addEventListener('click', () => flipCard(card));
+    });
+
+    function flipCard(card) {
+        if (isChecking || card.classList.contains('flipped') || card.classList.contains('matched')) {
+            return;
+        }
+
+        card.classList.add('flipped');
+        flippedCards.push(card);
+
+        if (flippedCards.length === 2) {
+            moves++;
+            document.getElementById('moveCount').textContent = moves;
+            checkMatch();
+        }
+    }
+
+    function checkMatch() {
+        isChecking = true;
+        const [card1, card2] = flippedCards;
+
+        if (card1.dataset.pair === card2.dataset.pair) {
+            // Match!
+            setTimeout(() => {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                document.getElementById('matchCount').textContent = matchedPairs;
+                flippedCards = [];
+                isChecking = false;
+
+                if (matchedPairs === totalPairs) {
+                    completeGame();
+                }
+            }, 500);
+        } else {
+            // No match
+            setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                flippedCards = [];
+                isChecking = false;
+            }, 1000);
+        }
+    }
+
+    function completeGame() {
+        // Show loading state
+        document.getElementById('memoryGrid').style.opacity = '0.5';
+
+        fetch('{{ url_for("minigames.memory_complete", challenge_id=challenge.id) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('revealedPart').textContent = 'Key Part: ' + data.revealed_part;
+                    document.getElementById('memoryGrid').style.display = 'none';
+                    document.querySelector('.stats-bar').style.display = 'none';
+                    document.getElementById('resultArea').style.display = 'block';
+                } else {
+                    // Show error message
+                    alert('Error: ' + (data.message || 'Failed to reveal key part. Please try again.'));
+                    document.getElementById('memoryGrid').style.opacity = '1';
+                }
+            })
+            .catch(error => {
+                console.error('Error completing game:', error);
+                alert('Error completing game: ' + error.message + '. Please refresh and try again.');
+                document.getElementById('memoryGrid').style.opacity = '1';
+            });
+    }
+</script>
+{% endblock %}

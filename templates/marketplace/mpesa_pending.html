@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card-dark text-center py-5">
+                <div class="mb-4">
+                    <div class="spinner-wrapper" id="spinner">
+                        <div
+                            style="width: 80px; height: 80px; border: 4px solid var(--border-color); border-top-color: #4CAF50; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;">
+                        </div>
+                    </div>
+                    <div id="success-icon" style="display: none;">
+                        <i class="fas fa-check-circle" style="font-size: 5rem; color: #4CAF50;"></i>
+                    </div>
+                    <div id="failed-icon" style="display: none;">
+                        <i class="fas fa-times-circle" style="font-size: 5rem; color: #ef4444;"></i>
+                    </div>
+                </div>
+
+                <h3 class="text-white mb-2" id="status-title">Waiting for M-Pesa Payment</h3>
+                <p class="text-muted mb-4" id="status-message">Check your phone for the STK push prompt and enter your
+                    M-Pesa PIN</p>
+
+                <div class="card-dark p-4 mb-4" style="background: var(--bg-tertiary); border-radius: 1rem;">
+                    <div class="row text-start">
+                        <div class="col-6">
+                            <p class="text-muted mb-1">Amount</p>
+                            <p class="text-white h5">KES {{ "%.2f"|format(order.total_amount) }}</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="text-muted mb-1">Phone</p>
+                            <p class="text-white h5">{{ order.phone_number }}</p>
+                        </div>
+                    </div>
+                    <hr style="border-color: var(--border-color);">
+                    <div class="text-start">
+                        <p class="text-muted mb-1">Product</p>
+                        <p class="text-white mb-0">{{ order.product.name }}</p>
+                    </div>
+                </div>
+
+                <div id="action-buttons">
+                    <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-outline-custom">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Products
+                    </a>
+                </div>
+
+                <div id="success-buttons" style="display: none;">
+                    <a href="{{ url_for('marketplace.order_detail', order_id=order.id) }}" class="btn btn-lg"
+                        style="background: #4CAF50; color: white;">
+                        <i class="fas fa-receipt me-2"></i>View Order
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+<script>
+    let checkInterval;
+
+    function checkPaymentStatus() {
+        fetch('{{ url_for("marketplace.mpesa_check_status", order_id=order.id) }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'completed') {
+                    clearInterval(checkInterval);
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('success-icon').style.display = 'block';
+                    document.getElementById('status-title').textContent = 'Payment Successful!';
+                    document.getElementById('status-message').textContent = 'Receipt: ' + data.receipt;
+                    document.getElementById('action-buttons').style.display = 'none';
+                    document.getElementById('success-buttons').style.display = 'block';
+                } else if (data.status === 'failed' || data.status === 'cancelled') {
+                    clearInterval(checkInterval);
+                    document.getElementById('spinner').style.display = 'none';
+                    document.getElementById('failed-icon').style.display = 'block';
+                    document.getElementById('status-title').textContent = 'Payment Failed';
+                    document.getElementById('status-message').textContent = data.message || 'The payment was cancelled or failed.';
+                } else {
+                    document.getElementById('status-message').textContent = data.message || 'Waiting for payment...';
+                }
+            })
+            .catch(error => {
+                console.error('Status check error:', error);
+            });
+    }
+
+    // Start checking every 3 seconds
+    checkInterval = setInterval(checkPaymentStatus, 3000);
+
+    // Initial check after 2 seconds
+    setTimeout(checkPaymentStatus, 2000);
+</script>
+{% endblock %}

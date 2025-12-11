@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-white mb-4"><i class="fas fa-shopping-bag me-2"></i>My Orders</h2>
+
+    {% if orders %}
+    <div class="row">
+        {% for order in orders %}
+        <div class="col-12 mb-3">
+            <div class="card-dark">
+                <div class="row g-0">
+                    <div class="col-md-2">
+                        {% if order.product.image_path %}
+                        <img src="{{ url_for('marketplace.product_image', filename=order.product.image_path) }}"
+                            class="img-fluid rounded-start" alt="{{ order.product.name }}"
+                            style="max-height: 120px; object-fit: cover;">
+                        {% else %}
+                        <div class="d-flex align-items-center justify-content-center h-100"
+                            style="background: var(--bg-tertiary); min-height: 100px;">
+                            <i class="fas fa-image text-muted" style="font-size: 2rem;"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-10">
+                        <div class="card-body py-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h5 class="text-white mb-1">{{ order.product.name }}</h5>
+                                    <p class="text-muted small mb-0">Order #{{ order.id }}</p>
+                                    <p class="text-muted small mb-0">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                    </p>
+                                </div>
+                                <div class="col-md-2">
+                                    <p class="text-muted small mb-0">Amount</p>
+                                    <p class="text-white mb-0">KES {{ "%.2f"|format(order.total_amount) }}</p>
+                                </div>
+                                <div class="col-md-2">
+                                    <p class="text-muted small mb-0">Payment</p>
+                                    {% if order.payment and order.payment.status.value == 'completed' %}
+                                    <span class="badge rounded-pill" style="background: #4CAF50;">Paid</span>
+                                    {% elif order.payment and order.payment.status.value == 'pending' %}
+                                    <span class="badge rounded-pill" style="background: #f59e0b;">Pending</span>
+                                    {% else %}
+                                    <span class="badge rounded-pill" style="background: #ef4444;">Failed</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2">
+                                    <p class="text-muted small mb-0">Delivery</p>
+                                    {% if order.delivery_status.value == 'delivered' %}
+                                    <span class="badge rounded-pill" style="background: #4CAF50;">Delivered</span>
+                                    {% elif order.delivery_status.value == 'shipped' %}
+                                    <span class="badge rounded-pill" style="background: #3b82f6;">Shipped</span>
+                                    {% elif order.delivery_status.value == 'processing' %}
+                                    <span class="badge rounded-pill" style="background: #8b5cf6;">Processing</span>
+                                    {% else %}
+                                    <span class="badge rounded-pill" style="background: #6b7280;">Pending</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <a href="{{ url_for('marketplace.order_detail', order_id=order.id) }}"
+                                        class="btn btn-sm btn-outline-custom">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card-dark text-center py-5">
+        <i class="fas fa-shopping-bag text-muted" style="font-size: 4rem;"></i>
+        <h4 class="text-white mt-3">No Orders Yet</h4>
+        <p class="text-muted">Start shopping to see your orders here!</p>
+        <a href="{{ url_for('marketplace.view_products') }}" class="btn btn-primary-custom">
+            <i class="fas fa-shopping-cart me-2"></i>Browse Products
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

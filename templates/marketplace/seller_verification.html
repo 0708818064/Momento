@@ -40,30 +40,28 @@
 
                         <div class="progress" style="height: 30px;">
                             <div class="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                                 role="progressbar"
-                                 style="width: {{ progress }}%;"
-                                 aria-valuenow="{{ solved }}"
-                                 aria-valuemin="0"
-                                 aria-valuemax="{{ required }}">
+                                role="progressbar" style="width: {{ progress }}%;" aria-valuenow="{{ solved }}"
+                                aria-valuemin="0" aria-valuemax="{{ required }}">
                                 <span class="fw-bold">
                                     {% if solved >= required %}
-                                        ✅ Verified Seller!
+                                    ✅ Verified Seller!
                                     {% else %}
-                                        {{ solved }} / {{ required }} Completed
+                                    {{ solved }} / {{ required }} Completed
                                     {% endif %}
                                 </span>
                             </div>
                         </div>
 
                         {% if solved >= required %}
-                            <div class="alert alert-success text-center mt-3">
-                                <i class="fas fa-trophy fa-2x mb-2"></i>
-                                <h4>Congratulations! You're now a verified seller!</h4>
-                            </div>
+                        <div class="alert alert-success text-center mt-3">
+                            <i class="fas fa-trophy fa-2x mb-2"></i>
+                            <h4>Congratulations! You're now a verified seller!</h4>
+                        </div>
                         {% else %}
-                            <div class="alert alert-info text-center mt-3">
-                                <strong>{{ required - solved }}</strong> more challenge{{ '' if (required - solved) == 1 else 's' }} needed!
-                            </div>
+                        <div class="alert alert-info text-center mt-3">
+                            <strong>{{ required - solved }}</strong> more challenge{{ '' if (required - solved) == 1
+                            else 's' }} needed!
+                        </div>
                         {% endif %}
                     </div>
 
@@ -74,58 +72,61 @@
                     </h4>
 
                     {% if hard_challenges %}
-                        <div class="row row-cols-1 row-cols-md-2 g-4">
-                            {% for challenge_id, challenge in hard_challenges.items() %}
-                                {% set is_solved = challenge_id in solved_list %}
-                                <div class="col">
-                                    <div class="card h-100 {% if is_solved %}border-success{% else %}border-light{% endif %} shadow-sm">
-                                        <div class="card-body d-flex flex-column">
-                                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                                <h5 class="card-title mb-0">
-                                                    {{ challenge.title | default("Challenge #" + challenge_id) }}
-                                                </h5>
-                                                <span class="badge rounded-pill {% if is_solved %}bg-success{% else %}bg-secondary{% endif %} fs-6">
-                                                    {% if is_solved %}Solved{% else %}Pending{% endif %}
-                                                </span>
-                                            </div>
+                    <div class="row row-cols-1 row-cols-md-2 g-4">
+                        {% for challenge_id, challenge in hard_challenges.items() %}
+                        {% set is_solved = challenge_id in solved_list %}
+                        <div class="col">
+                            <div
+                                class="card h-100 {% if is_solved %}border-success{% else %}border-light{% endif %} shadow-sm">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="card-title mb-0">
+                                            {{ challenge.title | default("Challenge #" + challenge_id) }}
+                                        </h5>
+                                        <span
+                                            class="badge rounded-pill {% if is_solved %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                                            {% if is_solved %}Solved{% else %}Pending{% endif %}
+                                        </span>
+                                    </div>
 
-                                            <p class="card-text text-muted flex-grow-1">
-                                                {{ challenge.description | default("No description provided.") | truncate(120) }}
-                                            </p>
+                                    <p class="card-text text-muted flex-grow-1">
+                                        {{ challenge.description | default("No description provided.") | truncate(120)
+                                        }}
+                                    </p>
 
-                                            <div class="mt-auto">
-                                                <a href="{{ url_for('challenges.view_challenge', challenge_id=challenge_id, mode='seller') }}"
-                                                   class="btn btn-sm w-100 {% if is_solved %}btn-outline-success{% else %}btn-primary{% endif %}">
-                                                    {% if is_solved %}
-                                                        <i class="fas fa-eye me-1"></i> Review Solution
-                                                    {% else %}
-                                                        <i class="fas fa-play me-1"></i> Start Challenge
-                                                    {% endif %}
-                                                </a>
-                                            </div>
-                                        </div>
-                                        {% if is_solved %}
-                                            <div class="card-footer bg-success text-white text-center small">
-                                                <i class="fas fa-check-circle"></i> Completed
-                                            </div>
-                                        {% endif %}
+                                    <div class="mt-auto">
+                                        <a href="{{ url_for('view_challenge', challenge_id=challenge_id, mode='seller') }}"
+                                            class="btn btn-sm w-100 {% if is_solved %}btn-outline-success{% else %}btn-primary{% endif %}">
+                                            {% if is_solved %}
+                                            <i class="fas fa-eye me-1"></i> Review Solution
+                                            {% else %}
+                                            <i class="fas fa-play me-1"></i> Start Challenge
+                                            {% endif %}
+                                        </a>
                                     </div>
                                 </div>
-                            {% endfor %}
+                                {% if is_solved %}
+                                <div class="card-footer bg-success text-white text-center small">
+                                    <i class="fas fa-check-circle"></i> Completed
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
+                        {% endfor %}
+                    </div>
                     {% else %}
-                        <div class="alert alert-warning text-center">
-                            <i class="fas fa-info-circle"></i>
-                            No hard challenges are currently available. Please check back soon!
-                        </div>
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-info-circle"></i>
+                        No hard challenges are currently available. Please check back soon!
+                    </div>
                     {% endif %}
 
                     <!-- Action Buttons -->
                     <div class="text-center mt-5">
                         {% if solved >= required %}
-                            <a href="{{ url_for('marketplace.create_product') }}" class="btn btn-success btn-lg px-5">
-                                <i class="fas fa-store me-2"></i> Start Selling Products
-                            </a>
+                        <a href="{{ url_for('marketplace.create_product') }}" class="btn btn-success btn-lg px-5">
+                            <i class="fas fa-store me-2"></i> Start Selling Products
+                        </a>
                         {% endif %}
 
                         <a href="{{ url_for('marketplace.index') }}" class="btn btn-outline-secondary btn-lg px-4 ms-3">
@@ -134,10 +135,10 @@
                     </div>
 
                     <!-- Debug (remove in production) -->
-                    {% if current_app.config.DEBUG %}
-                        <div class="mt-4 p-3 bg-light rounded small text-muted border">
-                            <strong>Debug:</strong> Solved challenge IDs: {{ solved_list }}
-                        </div>
+                    {% if config.DEBUG %}
+                    <div class="mt-4 p-3 bg-light rounded small text-muted border">
+                        <strong>Debug:</strong> Solved challenge IDs: {{ solved_list }}
+                    </div>
                     {% endif %}
 
                 </div>

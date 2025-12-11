@@ -3,39 +3,42 @@
 {% block content %}
 <div class="container mt-4">
     {% if verification_mode %}
-        <div class="alert alert-info">
-            {% if verification_mode == 'buyer' %}
-                <h4>Buyer Verification Mode</h4>
-                <p>Complete 3 easy challenges to become a verified buyer.</p>
-            {% else %}
-                <h4>Seller Verification Mode</h4>
-                <p>Complete 5 hard challenges to become a verified seller.</p>
-            {% endif %}
-            <a href="{{ url_for('list_challenges', mode=verification_mode) }}" class="btn btn-outline-primary">Back to Challenges</a>
-        </div>
+    <div class="alert alert-info">
+        {% if verification_mode == 'buyer' %}
+        <h4>Buyer Verification Mode</h4>
+        <p>Complete 3 easy challenges to become a verified buyer.</p>
+        {% else %}
+        <h4>Seller Verification Mode</h4>
+        <p>Complete 5 hard challenges to become a verified seller.</p>
+        {% endif %}
+        <a href="{{ url_for('list_challenges', mode=verification_mode) }}" class="btn btn-outline-primary">Back to
+            Challenges</a>
+    </div>
     {% endif %}
 
     <div class="card">
         <div class="card-body">
             <h2 class="card-title">{{ challenge.id }}</h2>
-            <span class="badge {% if challenge.difficulty == 'easy' %}bg-success{% elif challenge.difficulty == 'medium' %}bg-warning{% else %}bg-danger{% endif %}">
+            <span
+                class="badge {% if challenge.difficulty == 'easy' %}bg-success{% elif challenge.difficulty == 'medium' %}bg-warning{% else %}bg-danger{% endif %}">
                 {{ challenge.difficulty }}
             </span>
             <p class="card-text mt-3">{{ challenge.description }}</p>
-            
+
             {% if challenge.files %}
             <div class="mt-4">
                 <h4>Challenge Files:</h4>
                 <div class="list-group">
                     {% for file in challenge.files %}
-                    <a href="{{ url_for('static', filename='challenges/' + challenge.id + '/' + file) }}" class="list-group-item list-group-item-action">
+                    <a href="{{ url_for('static', filename='challenges/' + challenge.id + '/' + file) }}"
+                        class="list-group-item list-group-item-action">
                         <i class="fas fa-file me-2"></i>{{ file }}
                     </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-            
+
             <div class="mt-4">
                 <h4>Encrypted Message:</h4>
                 <div class="card">
@@ -47,7 +50,9 @@
 
             <div class="mt-4">
                 <h4>Submit Flag</h4>
-                <form action="{{ url_for('submit_flag', challenge_id=challenge.id, mode=verification_mode) }}" method="POST">
+                <form action="{{ url_for('submit_flag', challenge_id=challenge.id, mode=verification_mode) }}"
+                    method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="input-group">
                         <input type="text" name="flag" class="form-control" placeholder="Enter flag" required>
                         <button type="submit" class="btn btn-primary">Submit</button>
@@ -55,13 +60,25 @@
                 </form>
             </div>
 
+            <div class="mt-4">
+                <h4><i class="fas fa-gamepad me-2"></i>Need Help Decrypting?</h4>
+                <p class="text-muted">Complete minigames to reveal parts of the encryption key!</p>
+                <a href="{{ url_for('minigames.minigames_hub', challenge_id=challenge.id) }}"
+                    class="btn btn-outline-success">
+                    <i class="fas fa-puzzle-piece me-2"></i>Play Minigames to Get Key
+                </a>
+            </div>
+
             {% if challenge.hints %}
-                <div class="mt-4">
-                    <h4>Hints</h4>
-                    <form action="{{ url_for('show_hint', challenge_id=challenge.id, mode=verification_mode) }}" method="GET">
-                        <button type="submit" class="btn btn-outline-info">Get Hint</button>
-                    </form>
-                </div>
+            <div class="mt-4">
+                <h4>Hints</h4>
+                <form action="{{ url_for('show_hint', challenge_id=challenge.id, mode=verification_mode) }}"
+                    method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-info"><i class="fas fa-lightbulb me-1"></i>Get
+                        Hint</button>
+                </form>
+            </div>
             {% endif %}
         </div>
     </div>

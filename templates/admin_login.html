@@ -1,23 +1,29 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Admin Login</title>
     <style>
         body {
             background-color: black;
-            color: limegreen; /* Or a similar retro color */
+            color: limegreen;
+            /* Or a similar retro color */
             font-family: monospace;
             text-align: center;
         }
-        input[type="text"], input[type="password"] {
+
+        input[type="text"],
+        input[type="password"] {
             background-color: black;
             color: white;
             border: 1px solid limegreen;
             padding: 5px;
             margin: 5px;
         }
+
         .button {
-            background-color: green; /* Or a different color */
+            background-color: green;
+            /* Or a different color */
             border: none;
             color: black;
             padding: 10px 20px;
@@ -29,20 +35,24 @@
             cursor: pointer;
             border-radius: 5px;
         }
+
         #message {
-            color: red; /* Style for displaying messages */
+            color: red;
+            /* Style for displaying messages */
             margin-top: 10px;
         }
     </style>
 </head>
+
 <body>
     <h1>Admin Login</h1>
     <div id="message">
         {% if message %}
-            {{ message }}
+        {{ message }}
         {% endif %}
     </div>
     <form id="adminLoginForm" method="POST" action="{{ url_for('admin_login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label for="username">Username:</label><br>
         <input type="text" id="username" name="username" required><br><br>
         <label for="password">Password:</label><br>
@@ -50,4 +60,5 @@
         <button type="submit" class="button">Login</button>
     </form>
 </body>
+
 </html>

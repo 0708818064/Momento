@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="bi bi-envelope-check"></i> Verify Your Email</h4>
+                </div>
+                <div class="card-body text-center">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <div class="my-4">
+                        <i class="bi bi-envelope" style="font-size: 4rem; color: #17a2b8;"></i>
+                    </div>
+
+                    <h5>Check Your Email</h5>
+                    <p class="text-muted">
+                        We've sent a verification link to <strong>{{ email }}</strong>.<br>
+                        Please click the link in the email to verify your account.
+                    </p>
+
+                    <hr>
+
+                    <p class="small text-muted">Didn't receive the email?</p>
+
+                    <form method="POST" action="{{ url_for('auth.resend_verification') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="email" value="{{ email }}">
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-arrow-repeat"></i> Resend Verification Email
+                        </button>
+                    </form>
+
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-link">
+                            <i class="bi bi-arrow-left"></i> Back to Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h6 class="card-title">Tips:</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Check your spam or junk folder</li>
+                        <li>Make sure you entered the correct email address</li>
+                        <li>The verification link expires in 24 hours</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

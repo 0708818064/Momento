@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Post Product (Buyer)</title>
 </head>
+
 <body>
     <h1>Post a Product</h1>
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label>Product Name: <input type="text" name="product_name"></label><br>
         <label>Description: <textarea name="description"></textarea></label><br>
         <label>Price: <input type="number" name="price"></label><br>
@@ -13,4 +16,5 @@
     </form>
     <a href="/hub">Back to Hub</a>
 </body>
+
 </html>

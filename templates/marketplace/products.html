@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Products - Marketplace{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-shopping-bag me-2" style="color: var(--accent-primary);"></i>Marketplace
+                Products</h2>
+            <p class="text-muted mb-0">Discover products from verified sellers</p>
+        </div>
+        <div class="d-flex gap-2">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-custom active" id="gridView">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button type="button" class="btn btn-outline-custom" id="listView">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card-dark mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" class="search-input" placeholder="Search products..." id="productSearch">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-control-dark" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        <option value="electronics">Electronics</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="books">Books</option>
+                        <option value="home">Home & Garden</option>
+                        <option value="sports">Sports</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-control-dark" id="sortBy">
+                        <option value="newest">Newest First</option>
+                        <option value="price_low">Price: Low to High</option>
+                        <option value="price_high">Price: High to Low</option>
+                        <option value="name">Name A-Z</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="filter-pills mb-4">
+        <span class="filter-pill active">All</span>
+        <span class="filter-pill">Electronics</span>
+        <span class="filter-pill">Clothing</span>
+        <span class="filter-pill">Books</span>
+        <span class="filter-pill">Home</span>
+        <span class="filter-pill">Sports</span>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="product-grid" id="productsContainer">
+        {% for product in products %}
+        <div class="card-dark fade-in" style="animation-delay: {{ loop.index * 0.1 }}s;">
+            {% if product.image_path %}
+            <img src="{{ url_for('marketplace.product_image', filename=product.image_path) }}" class="card-img-top"
+                alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top d-flex align-items-center justify-content-center"
+                style="height: 200px; background: var(--bg-tertiary);">
+                <i class="fas fa-image text-muted" style="font-size: 3rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h5 class="card-title mb-0">{{ product.name }}</h5>
+                    <span class="badge badge-primary-custom">{{ product.category }}</span>
+                </div>
+                <p class="card-text text-muted small">{{ product.description | truncate(80) }}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge badge-custom">
+                        <i class="fas fa-box me-1"></i>Stock: {{ product.stock }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="h5 mb-0" style="color: var(--accent-success);">${{ "%.2f"|format(product.price)
+                        }}</span>
+                    <small class="text-muted d-block">by {{ product.seller.business_name }}</small>
+                </div>
+                <a href="{{ url_for('marketplace.checkout', product_id=product.id) }}"
+                    class="btn btn-primary-custom btn-sm">
+                    <i class="fas fa-shopping-cart me-1"></i>Buy
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="card-dark">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-box-open mb-3" style="font-size: 4rem; color: var(--text-muted);"></i>
+                    <h4>No Products Available</h4>
+                    <p class="text-muted">Check back later for new products!</p>
+                    <a href="{{ url_for('marketplace.index') }}" class="btn btn-primary-custom">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Marketplace
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Filter pills interaction
+    document.querySelectorAll('.filter-pill').forEach(pill => {
+        pill.addEventListener('click', function () {
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            // Add filter logic here
+        });
+    });
+
+    // View toggle
+    document.getElementById('gridView').addEventListener('click', function () {
+        document.getElementById('productsContainer').classList.remove('list-view');
+        this.classList.add('active');
+        document.getElementById('listView').classList.remove('active');
+    });
+
+    document.getElementById('listView').addEventListener('click', function () {
+        document.getElementById('productsContainer').classList.add('list-view');
+        this.classList.add('active');
+        document.getElementById('gridView').classList.remove('active');
+    });
+</script>
+{% endblock %}
+{% endblock %}

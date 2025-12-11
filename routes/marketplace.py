@@ -6,7 +6,10 @@ from flask import (
 )
 from flask_login import login_required, current_user, login_user
 # --- Assuming models are correctly defined ---
-from core.marketplace.models import Seller, Product, Buyer, Payment, PaymentStatus, PaymentMethod
+from core.marketplace.models import (
+    Seller, Product, Buyer, Payment, PaymentStatus, PaymentMethod,
+    Order, DeliveryStatus
+)
 from core.auth.models import User # Assuming User model is here
 # --- Assuming db_session is correctly configured ---
 from core.database import db_session
@@ -14,8 +17,9 @@ from core.database import db_session
 from core.challenges.challenge_manager import ChallengeManager
 # --- Remove email verification import ---
 # from core.email.service import send_verification_email
-# --- Assuming payment functions exist elsewhere ---
-# from core.payment.service import get_payment_methods, create_payment_method, delete_payment_method, process_payment
+from core.payment.service import process_payment
+# --- M-Pesa Integration ---
+from core.payments.mpesa import mpesa_client
 
 # --- Other necessary imports ---
 from flask_wtf.csrf import CSRFProtect # Recommended to enable
@@ -112,7 +116,7 @@ def buyer_required(f):
             flash('Please log in to access this page.', 'warning')
             return redirect(url_for('user_login'))
 
-        buyer = db_session.query(Buyer).filter_by(user_id=current_user.id).first()
+        buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
         required_challenges = 3 # Configurable?
 
         if not buyer:
@@ -121,7 +125,7 @@ def buyer_required(f):
 
         # Use actual verification logic (e.g., check solved challenges count)
         # Assuming Buyer model has 'solved_challenges' list/JSON field
-        solved_count = len(buyer.solved_challenges or [])
+        solved_count = len(buyer.get_solved_challenges())
         if solved_count < required_challenges:
              flash(f'You need to complete at least {required_challenges} easy challenges to access this page.', 'warning')
              return redirect(url_for('marketplace.buyer_verification'))
@@ -151,7 +155,7 @@ def seller_required(f):
             flash(f'You need {5 - len(seller.get_solved_challenges())} more hard challenges to sell.', 'warning')
             return redirect(url_for('marketplace.seller_verification'))
 
-        return f(*args, **kwargs, seller=seller)  # optional: pass seller to view
+        return f(*args, **kwargs)  # Don't pass seller, routes do their own lookup
     return decorated_function
 
 
@@ -162,26 +166,28 @@ def index():
     """Marketplace landing page - shows products if buyer is verified."""
     products = []
     buyer = None
+    seller = None
     if current_user.is_authenticated:
-        buyer = db_session.query(Buyer).filter_by(user_id=current_user.id).first()
+        buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+        seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
         required_challenges = 3
-        solved_count = len(buyer.solved_challenges or []) if buyer else 0
+        solved_count = len(buyer.get_solved_challenges()) if buyer else 0
         # Check verification status (challenges completed, potentially other checks later)
         if buyer and solved_count >= required_challenges:
             products = db_session.query(Product).filter_by(is_active=True).order_by(Product.created_at.desc()).all()
-            return render_template('marketplace/index.html', products=products, buyer=buyer)
+            return render_template('marketplace/index.html', products=products, buyer=buyer, seller=seller)
 
-    return render_template('marketplace/welcome.html')
+    return render_template('marketplace/welcome.html', buyer=buyer, seller=seller)
 
 
 @marketplace_bp.route('/buyer/verify')
 @login_required
 def buyer_verification():
     """Page for buyers to see challenge status for verification."""
-    buyer = db_session.query(Buyer).filter_by(user_id=current_user.id).first()
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
     required_count = 3
 
-    if buyer and len(buyer.solved_challenges or []) >= required_count:
+    if buyer and len(buyer.get_solved_challenges()) >= required_count:
         flash('You are already a verified buyer!', 'success')
         return redirect(url_for('marketplace.view_products'))
 
@@ -193,7 +199,7 @@ def buyer_verification():
         flash("Could not load challenges. Please try again later.", "error")
         easy_challenges = {}
 
-    solved_challenge_ids = set(buyer.solved_challenges if buyer and buyer.solved_challenges else [])
+    solved_challenge_ids = set(buyer.get_solved_challenges() if buyer else [])
     solved_easy_count = sum(1 for c_id in easy_challenges if c_id in solved_challenge_ids)
 
     return render_template('marketplace/buyer_verification.html',
@@ -253,7 +259,7 @@ def seller_register():
              return render_template("marketplace/seller_register.html")
 
         seller = Seller(
-            user_id=user.id, # Link to user's primary key
+            user_id=user.username, # Link to user's username (ForeignKey)
             business_name=business_name,
             description=description,
             is_verified=0 # Needs challenge verification
@@ -316,7 +322,7 @@ def buyer_register():
              return render_template("marketplace/buyer_register.html")
 
         buyer = Buyer(
-            user_id=user.id, # Link to user's primary key
+            user_id=user.username, # Link to user's username (ForeignKey)
             display_name=display_name,
             is_verified=0 # Needs challenge verification
         )
@@ -346,7 +352,7 @@ def buyer_register():
 @login_required
 def become_seller():
     """Allow logged-in user to register as a seller (creates Seller profile only)."""
-    if db_session.query(Seller).filter_by(user_id=current_user.id).first():
+    if db_session.query(Seller).filter_by(user_id=current_user.username).first():
         flash('You are already registered as a seller.', 'info')
         return redirect(url_for('marketplace.seller_verification'))
 
@@ -360,7 +366,7 @@ def become_seller():
             return render_template('marketplace/become_seller_form.html')
 
         seller = Seller(
-            user_id=current_user.id,
+            user_id=current_user.username,
             business_name=business_name,
             description=description,
             is_verified=0
@@ -383,10 +389,10 @@ def become_seller():
 @login_required
 def seller_verification():
     """Page for sellers to see challenge status for verification."""
-    seller = db_session.query(Seller).filter_by(user_id=current_user.id).first()
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
     required_count = 5
 
-    if seller and len(seller.solved_challenges or []) >= required_count:
+    if seller and len(seller.get_solved_challenges()) >= required_count:
         flash('You are already a verified seller!', 'success')
         return redirect(url_for('marketplace.seller_products'))
 
@@ -398,7 +404,7 @@ def seller_verification():
         flash("Could not load challenges. Please try again later.", "error")
         hard_challenges = {}
 
-    solved_challenge_ids = set(seller.solved_challenges if seller and seller.solved_challenges else [])
+    solved_challenge_ids = set(seller.get_solved_challenges() if seller else [])
     solved_hard_count = sum(1 for c_id in hard_challenges if c_id in solved_challenge_ids)
 
     return render_template('marketplace/seller_verification.html',
@@ -457,7 +463,7 @@ def create_product():
 @seller_required
 def seller_products():
     """List all products for the current seller"""
-    seller = db_session.query(Seller).filter_by(user_id=current_user.id).first()
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
     products = db_session.query(Product).filter_by(seller_id=seller.id).order_by(Product.created_at.desc()).all()
     return render_template('marketplace/seller_products.html', products=products)
 
@@ -467,7 +473,7 @@ def seller_products():
 @seller_required
 def edit_product(product_id):
     """Edit a product listing"""
-    seller = db_session.query(Seller).filter_by(user_id=current_user.id).first()
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
     product = db_session.query(Product).filter_by(id=product_id, seller_id=seller.id).first()
     if not product: abort(404, description="Product not found or permission denied.")
 
@@ -522,7 +528,7 @@ def edit_product(product_id):
 @seller_required
 def delete_product(product_id):
     """Delete a product listing"""
-    seller = db_session.query(Seller).filter_by(user_id=current_user.id).first()
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
     product = db_session.query(Product).filter_by(id=product_id, seller_id=seller.id).first()
     if not product:
          flash('Product not found or you do not have permission.', 'error')
@@ -559,49 +565,301 @@ def product_image(filename):
          abort(404)
 
 
-# --- Placeholder routes for checkout/payment ---
-# --- Need significant implementation ---
+# --- M-Pesa Payment Routes ---
 
 @marketplace_bp.route('/checkout/<int:product_id>', methods=['GET', 'POST'])
 @login_required
 @buyer_required
 def checkout(product_id):
-    """Handle product checkout - Placeholder"""
-    buyer = db_session.query(Buyer).filter_by(user_id=current_user.id).first()
+    """Handle product checkout with M-Pesa, Stripe, or Crypto"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
     product = db_session.query(Product).get(product_id)
 
     if not product or not product.is_active:
-        flash("Product not found or is no longer available.", "error"); return redirect(url_for('marketplace.view_products'))
+        flash("Product not found or is no longer available.", "error")
+        return redirect(url_for('marketplace.view_products'))
     if product.stock <= 0:
-         flash("Sorry, this product is out of stock.", "warning"); return redirect(url_for('marketplace.view_products'))
+        flash("Sorry, this product is out of stock.", "warning")
+        return redirect(url_for('marketplace.view_products'))
 
     if request.method == 'GET':
-        payment_methods = [] # TODO: Fetch from Stripe via helper
-        if not payment_methods: flash("Please add a payment method.", "warning") # Redirect?
-        return render_template('marketplace/checkout.html', product=product, payment_methods=payment_methods, stripe_public_key=os.getenv('STRIPE_PUBLIC_KEY'))
-    else: # POST
-        payment_method_id = request.form.get('payment_method_id') # This might be Stripe PM ID
-        if not payment_method_id:
-             flash("Please select a payment method.", "error")
-             return render_template('marketplace/checkout.html', product=product, payment_methods=[], stripe_public_key=os.getenv('STRIPE_PUBLIC_KEY'))
+        return render_template('marketplace/checkout.html', product=product)
+    
+    # POST - Process payment
+    payment_method_id = request.form.get('payment_method_id')
+    phone_number = request.form.get('phone_number', '')
+    delivery_address = request.form.get('delivery_address', '')
+    
+    if not payment_method_id:
+        flash("Please select a payment method.", "error")
+        return render_template('marketplace/checkout.html', product=product)
 
-        # TODO: process_payment(buyer, product, payment_method_id)
-        success, message = False, "Payment processing not implemented."
-
-        if success:
-            flash("Purchase successful!", "success"); return redirect(url_for('marketplace.order_confirmation', payment_id=0)) # Pass real payment ID
+    # Handle M-Pesa payment
+    if payment_method_id == 'mpesa':
+        if not phone_number or len(phone_number) < 9:
+            flash("Please enter a valid Safaricom phone number.", "error")
+            return render_template('marketplace/checkout.html', product=product)
+        
+        # Format phone number (add 254 prefix if needed)
+        formatted_phone = mpesa_client.format_phone_number(phone_number)
+        
+        # Create pending payment record
+        payment = Payment(
+            buyer_id=buyer.id,
+            product_id=product.id,
+            amount=product.price,
+            status=PaymentStatus.PENDING,
+            payment_method=PaymentMethod.MPESA
+        )
+        db_session.add(payment)
+        db_session.flush()
+        
+        # Create order with pending status
+        order = Order(
+            buyer_id=buyer.id,
+            product_id=product.id,
+            payment_id=payment.id,
+            quantity=1,
+            total_amount=product.price,
+            delivery_status=DeliveryStatus.PENDING,
+            delivery_address=delivery_address,
+            phone_number=formatted_phone
+        )
+        db_session.add(order)
+        db_session.commit()
+        
+        # Initiate STK Push
+        result = mpesa_client.stk_push(
+            phone_number=formatted_phone,
+            amount=int(product.price),
+            account_reference=f"ORD{order.id}",
+            transaction_desc=product.name[:13]
+        )
+        
+        if result.get('success'):
+            # Store checkout request ID for callback matching
+            payment.checkout_request_id = result.get('checkout_request_id')
+            db_session.commit()
+            
+            flash("Check your phone for M-Pesa PIN prompt!", "success")
+            return redirect(url_for('marketplace.mpesa_pending', order_id=order.id))
         else:
-            flash(f"Purchase failed: {message}", "error")
-            return render_template('marketplace/checkout.html', product=product, payment_methods=[], stripe_public_key=os.getenv('STRIPE_PUBLIC_KEY'))
+            # Rollback on failure
+            db_session.delete(order)
+            db_session.delete(payment)
+            db_session.commit()
+            flash(f"M-Pesa Error: {result.get('message')}", "error")
+            return render_template('marketplace/checkout.html', product=product)
+    
+    # Handle Stripe/Crypto (placeholder)
+    else:
+        try:
+            success, message = process_payment(buyer, product, payment_method_id)
+            
+            if success:
+                product.stock -= 1
+                db_session.commit()
+                
+                payment = db_session.query(Payment).filter_by(
+                    buyer_id=buyer.id,
+                    product_id=product.id
+                ).order_by(Payment.created_at.desc()).first()
+                
+                flash("Purchase successful!", "success")
+                return redirect(url_for('marketplace.order_confirmation', payment_id=payment.id if payment else 0))
+            else:
+                flash(f"Purchase failed: {message}", "error")
+                return render_template('marketplace/checkout.html', product=product)
+        except Exception as e:
+            current_app.logger.error(f"Payment processing error: {e}", exc_info=True)
+            flash(f"Payment error: {str(e)}", "error")
+            return render_template('marketplace/checkout.html', product=product)
+
+
+@marketplace_bp.route('/mpesa/pending/<int:order_id>')
+@login_required
+def mpesa_pending(order_id):
+    """Show M-Pesa payment pending page"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+    order = db_session.query(Order).filter_by(id=order_id, buyer_id=buyer.id).first()
+    
+    if not order:
+        flash("Order not found.", "error")
+        return redirect(url_for('marketplace.view_products'))
+    
+    return render_template('marketplace/mpesa_pending.html', order=order)
+
+
+@marketplace_bp.route('/mpesa/callback', methods=['POST'])
+def mpesa_callback():
+    """Handle M-Pesa STK Push callback (webhook)"""
+    try:
+        callback_data = request.get_json()
+        current_app.logger.info(f"M-Pesa Callback received: {callback_data}")
+        
+        result = mpesa_client.parse_callback(callback_data)
+        
+        if not result:
+            return jsonify({'ResultCode': 1, 'ResultDesc': 'Invalid callback data'}), 400
+        
+        checkout_request_id = result.get('checkout_request_id')
+        
+        # Find the payment by checkout request ID
+        payment = db_session.query(Payment).filter_by(
+            checkout_request_id=checkout_request_id
+        ).first()
+        
+        if not payment:
+            current_app.logger.warning(f"Payment not found for checkout_request_id: {checkout_request_id}")
+            return jsonify({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+        
+        if result.get('success'):
+            # Update payment status
+            payment.status = PaymentStatus.COMPLETED
+            payment.transaction_id = result.get('mpesa_receipt')
+            payment.completed_at = datetime.utcnow()
+            
+            # Update order
+            order = db_session.query(Order).filter_by(payment_id=payment.id).first()
+            if order:
+                order.mpesa_receipt_number = result.get('mpesa_receipt')
+                order.delivery_status = DeliveryStatus.PROCESSING
+                
+                # Decrease product stock
+                product = db_session.query(Product).get(payment.product_id)
+                if product and product.stock > 0:
+                    product.stock -= 1
+            
+            db_session.commit()
+            current_app.logger.info(f"M-Pesa payment completed: {result.get('mpesa_receipt')}")
+        else:
+            # Payment failed
+            payment.status = PaymentStatus.FAILED
+            db_session.commit()
+            current_app.logger.warning(f"M-Pesa payment failed: {result.get('result_desc')}")
+        
+        return jsonify({'ResultCode': 0, 'ResultDesc': 'Accepted'})
+        
+    except Exception as e:
+        current_app.logger.error(f"M-Pesa callback error: {e}", exc_info=True)
+        return jsonify({'ResultCode': 1, 'ResultDesc': str(e)}), 500
+
+
+@marketplace_bp.route('/mpesa/check/<int:order_id>')
+@login_required
+def mpesa_check_status(order_id):
+    """Check M-Pesa payment status (AJAX endpoint)"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+    order = db_session.query(Order).filter_by(id=order_id, buyer_id=buyer.id).first()
+    
+    if not order or not order.payment:
+        return jsonify({'status': 'error', 'message': 'Order not found'})
+    
+    payment = order.payment
+    
+    if payment.status == PaymentStatus.COMPLETED:
+        return jsonify({
+            'status': 'completed',
+            'receipt': payment.transaction_id,
+            'redirect': url_for('marketplace.order_detail', order_id=order.id)
+        })
+    elif payment.status == PaymentStatus.FAILED:
+        return jsonify({'status': 'failed', 'message': 'Payment failed or cancelled'})
+    else:
+        # Query M-Pesa for status
+        if payment.checkout_request_id:
+            result = mpesa_client.query_transaction(payment.checkout_request_id)
+            return jsonify({
+                'status': result.get('status', 'pending'),
+                'message': result.get('message', 'Waiting for payment...')
+            })
+        return jsonify({'status': 'pending', 'message': 'Waiting for payment...'})
+
+
+# --- Order Management Routes ---
+
+@marketplace_bp.route('/orders')
+@login_required
+@buyer_required
+def my_orders():
+    """View buyer's order history"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+    orders = db_session.query(Order).filter_by(buyer_id=buyer.id).order_by(Order.created_at.desc()).all()
+    return render_template('marketplace/orders.html', orders=orders)
+
+
+@marketplace_bp.route('/orders/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    """View single order details"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+    order = db_session.query(Order).filter_by(id=order_id, buyer_id=buyer.id).first()
+    
+    if not order:
+        flash("Order not found.", "error")
+        return redirect(url_for('marketplace.my_orders'))
+    
+    return render_template('marketplace/order_detail.html', order=order)
+
+
+@marketplace_bp.route('/seller/orders')
+@login_required
+@seller_required
+def seller_orders():
+    """View seller's orders to fulfill"""
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
+    
+    # Get all orders for seller's products
+    orders = db_session.query(Order).join(Product).filter(
+        Product.seller_id == seller.id
+    ).order_by(Order.created_at.desc()).all()
+    
+    return render_template('marketplace/seller_orders.html', orders=orders)
+
+
+@marketplace_bp.route('/seller/orders/<int:order_id>/update', methods=['POST'])
+@login_required
+@seller_required
+def update_order_status(order_id):
+    """Update order delivery status"""
+    seller = db_session.query(Seller).filter_by(user_id=current_user.username).first()
+    
+    # Verify seller owns this order's product
+    order = db_session.query(Order).join(Product).filter(
+        Order.id == order_id,
+        Product.seller_id == seller.id
+    ).first()
+    
+    if not order:
+        flash("Order not found or permission denied.", "error")
+        return redirect(url_for('marketplace.seller_orders'))
+    
+    new_status = request.form.get('status')
+    try:
+        order.delivery_status = DeliveryStatus(new_status)
+        if new_status == 'delivered':
+            order.delivered_at = datetime.utcnow()
+        db_session.commit()
+        flash(f"Order status updated to {new_status}.", "success")
+    except ValueError:
+        flash("Invalid status.", "error")
+    
+    return redirect(url_for('marketplace.seller_orders'))
 
 
 @marketplace_bp.route('/payment/<int:payment_id>/confirmation')
 @login_required
 def order_confirmation(payment_id):
-    """Show order confirmation page - Placeholder"""
-    payment = db_session.query(Payment).join(Buyer).filter(Payment.id == payment_id, Buyer.user_id == current_user.id).first()
-    if not payment: abort(404, description="Order not found or permission denied.")
-    return render_template('marketplace/confirmation.html', payment=payment)
+    """Show order confirmation page"""
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
+    payment = db_session.query(Payment).filter_by(id=payment_id, buyer_id=buyer.id).first()
+    
+    if not payment:
+        flash("Order not found.", "error")
+        return redirect(url_for('marketplace.view_products'))
+    
+    order = db_session.query(Order).filter_by(payment_id=payment.id).first()
+    return render_template('marketplace/confirmation.html', payment=payment, order=order)
 
 
 # --- Routes for Managing Payment Methods (Placeholders) ---
@@ -624,7 +882,7 @@ def add_payment_method():
     if not stripe_payment_method_id:
          flash("Failed to get payment method details from Stripe.", "error")
          return redirect(url_for('marketplace.payment_methods'))
-    buyer = db_session.query(Buyer).filter_by(user_id=current_user.id).first()
+    buyer = db_session.query(Buyer).filter_by(user_id=current_user.username).first()
     try:
         # TODO: Implement Stripe customer creation/attachment logic
         flash("Payment method added successfully (Placeholder).", "success")
@@ -652,3 +910,4 @@ def delete_payment_method():
         current_app.logger.error(f"Error deleting payment method {stripe_payment_method_id} for user {current_user.id}: {e}", exc_info=True)
         flash(f"Error deleting payment method: {str(e)}", "error")
     return redirect(url_for('marketplace.payment_methods'))
+

@@ -30,6 +30,15 @@ class PaymentStatus(enum.Enum):
 class PaymentMethod(enum.Enum):
     STRIPE = "stripe"
     CRYPTO = "crypto"
+    MPESA = "mpesa"
+
+
+class DeliveryStatus(enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
 
 
 # ------------------- Buyer -------------------
@@ -148,8 +157,42 @@ class Payment(Base):
     status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
     payment_method = Column(Enum(PaymentMethod))
     transaction_id = Column(String(200))
+    checkout_request_id = Column(String(200))  # For M-Pesa STK Push tracking
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime)
 
     buyer = relationship("Buyer", back_populates="payments")
     product = relationship("Product", back_populates="payments")
+    order = relationship("Order", back_populates="payment", uselist=False)
+
+
+# ------------------- Order -------------------
+class Order(Base):
+    __tablename__ = 'orders'
+
+    id = Column(Integer, primary_key=True)
+    buyer_id = Column(Integer, ForeignKey('buyers.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    payment_id = Column(Integer, ForeignKey('payments.id'), nullable=True)
+    
+    # Order details
+    quantity = Column(Integer, default=1, nullable=False)
+    total_amount = Column(Float, nullable=False)
+    
+    # Delivery info
+    delivery_status = Column(Enum(DeliveryStatus), default=DeliveryStatus.PENDING)
+    delivery_address = Column(Text, nullable=True)
+    phone_number = Column(String(20), nullable=False)
+    
+    # M-Pesa specific
+    mpesa_receipt_number = Column(String(50), nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    delivered_at = Column(DateTime, nullable=True)
+    
+    # Relationships
+    buyer = relationship("Buyer", backref="orders")
+    product = relationship("Product", backref="orders")
+    payment = relationship("Payment", back_populates="order")

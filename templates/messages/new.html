@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}New Message - Momentoooo{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-6 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex align-items-center">
+                        <a href="{{ url_for('messages.inbox') }}" class="btn btn-link text-secondary p-0 me-3">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                        <h5 class="mb-0"><i class="fas fa-edit me-2"></i>New Message</h5>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary mb-3">Select a user to start a conversation:</p>
+
+                    {% if users %}
+                    <div class="chat-list">
+                        {% for user in users %}
+                        <a href="{{ url_for('messages.chat', username=user.username) }}" class="chat-list-item">
+                            <div class="chat-list-avatar">
+                                {{ user.username[0].upper() }}
+                            </div>
+                            <div class="chat-list-info">
+                                <div class="chat-list-name">{{ user.username }}</div>
+                                <div class="chat-list-preview">
+                                    {{ user.email or 'No email' }}
+                                </div>
+                            </div>
+                            <div>
+                                <i class="fas fa-chevron-right text-muted"></i>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users text-muted mb-3" style="font-size: 2rem;"></i>
+                        <p class="text-muted">No other users found.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

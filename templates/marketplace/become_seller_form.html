@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Become a Seller</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <p class="text-muted mb-4">
+                        You're already logged in as <strong>{{ current_user.username }}</strong>.
+                        Complete the form below to register as a seller.
+                    </p>
+
+                    <form method="POST" action="{{ url_for('marketplace.become_seller') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="mb-3">
+                            <label for="business_name" class="form-label">Business/Store Name</label>
+                            <input type="text" class="form-control" id="business_name" name="business_name" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Business Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                placeholder="Describe what you plan to sell..."></textarea>
+                        </div>
+
+                        <div class="alert alert-info" role="alert">
+                            <h5><i class="fas fa-info-circle me-2"></i>Requirements:</h5>
+                            <ul class="mb-0">
+                                <li>Complete <strong>5 hard challenges</strong> to start selling</li>
+                                <li>All sellers must comply with our marketplace guidelines</li>
+                                <li>Commission fee of 5% applies to all sales</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">Register as Seller</button>
+                        </div>
+                    </form>
+
+                    <div class="mt-3 text-center">
+                        <a href="{{ url_for('marketplace.index') }}" class="text-muted">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Marketplace
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

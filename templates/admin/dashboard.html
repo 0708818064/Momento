@@ -14,13 +14,13 @@
                 </div>
                 <div class="card-body">
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% endwith %}
 
                     <div class="table-responsive">
@@ -42,7 +42,8 @@
                                     <td>{{ challenge.id }}</td>
                                     <td>{{ challenge.type }}</td>
                                     <td>
-                                        <span class="badge bg-{% if challenge.difficulty == 'easy' %}success{% elif challenge.difficulty == 'medium' %}warning{% else %}danger{% endif %}">
+                                        <span
+                                            class="badge bg-{% if challenge.difficulty == 'easy' %}success{% elif challenge.difficulty == 'medium' %}warning{% else %}danger{% endif %}">
                                             {{ challenge.difficulty }}
                                         </span>
                                     </td>
@@ -51,11 +52,15 @@
                                     <td>{{ challenge.failed_attempts }}</td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailsModal{{ challenge.id }}">
+                                            <button type="button" class="btn btn-sm btn-outline-info"
+                                                data-bs-toggle="modal" data-bs-target="#detailsModal{{ challenge.id }}">
                                                 <i class="fas fa-key"></i> Details
                                             </button>
-                                            <a href="{{ url_for('admin.edit_challenge', challenge_id=challenge.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ challenge.id }}">Delete</button>
+                                            <a href="{{ url_for('admin.edit_challenge', challenge_id=challenge.id) }}"
+                                                class="btn btn-sm btn-outline-primary">Edit</a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ challenge.id }}">Delete</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -76,34 +81,38 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Total Products</h5>
-                                    <h2 class="mb-0">{{ products|length }}</h2>
+                                    <h5 class="card-title text-muted">Total Products</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-primary);">{{ products|length }}</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Active Sellers</h5>
-                                    <h2 class="mb-0">{{ sellers|length }}</h2>
+                                    <h5 class="card-title text-muted">Active Sellers</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-secondary);">{{ sellers|length }}</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Total Sales</h5>
-                                    <h2 class="mb-0">${{ total_sales }}</h2>
+                                    <h5 class="card-title text-muted">Total Sales</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-success);">${{ total_sales }}</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Pending Orders</h5>
-                                    <h2 class="mb-0">{{ pending_orders }}</h2>
+                                    <h5 class="card-title text-muted">Pending Orders</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-warning);">{{ pending_orders }}</h2>
                                 </div>
                             </div>
                         </div>
@@ -121,24 +130,26 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Total Users</h5>
-                                    <h2 class="mb-0">{{ users|length }}</h2>
+                                    <h5 class="card-title text-muted">Total Users</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-primary);">{{ users|length }}</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
+                            <div class="card"
+                                style="background: var(--bg-tertiary); border: 1px solid var(--border-color);">
                                 <div class="card-body text-center">
-                                    <h5 class="card-title">Verified Users</h5>
-                                    <h2 class="mb-0">{{ verified_users }}</h2>
+                                    <h5 class="card-title text-muted">Verified Users</h5>
+                                    <h2 class="mb-0" style="color: var(--accent-success);">{{ verified_users }}</h2>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12">
                             <a href="{{ url_for('admin.user_management') }}" class="btn btn-info w-100">
-                                Manage Users
+                                <i class="fas fa-users me-2"></i>Manage Users
                             </a>
                         </div>
                     </div>
@@ -162,7 +173,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ url_for('admin.delete_challenge', challenge_id=challenge.id) }}" method="POST" class="d-inline">
+                <form action="{{ url_for('admin.delete_challenge', challenge_id=challenge.id) }}" method="POST"
+                    class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </div>
@@ -202,7 +215,9 @@
                             <li><strong>IV:</strong> <code>{{ challenge.iv }}</code></li>
                             {% endif %}
                             {% if challenge.public_key %}
-                            <li><strong>Public Key:</strong> <pre class="bg-light p-2 rounded"><code>{{ challenge.public_key }}</code></pre></li>
+                            <li><strong>Public Key:</strong>
+                                <pre class="bg-light p-2 rounded"><code>{{ challenge.public_key }}</code></pre>
+                            </li>
                             {% endif %}
                         </ul>
                     </div>

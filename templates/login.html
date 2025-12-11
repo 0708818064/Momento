@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -126,6 +127,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="row justify-content-center">
@@ -144,21 +146,24 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('user_login') }}" id="loginForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <div class="input-group">
                                 <span class="input-group-text bg-transparent border-end-0">
                                     <i class='bx bx-user text-light'></i>
                                 </span>
-                                <input type="text" class="form-control border-start-0" id="username" name="username" placeholder="Username" required>
+                                <input type="text" class="form-control border-start-0" id="username" name="username"
+                                    placeholder="Username" required>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="input-group">
                                 <span class="input-group-text bg-transparent border-end-0">
                                     <i class='bx bx-lock-alt text-light'></i>
                                 </span>
-                                <input type="password" class="form-control border-start-0" id="password" name="password" placeholder="Password" required>
+                                <input type="password" class="form-control border-start-0" id="password" name="password"
+                                    placeholder="Password" required>
                             </div>
                         </div>
 
@@ -199,23 +204,24 @@
                     action: 'verify'
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    statusDiv.innerHTML = '<i class="bx bx-check"></i> Authentication successful';
-                    statusDiv.style.background = 'rgba(39, 174, 96, 0.2)';
-                    window.location.href = '/challenges';
-                } else {
-                    statusDiv.innerHTML = '<i class="bx bx-x"></i> ' + (data.message || 'Authentication failed');
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusDiv.innerHTML = '<i class="bx bx-check"></i> Authentication successful';
+                        statusDiv.style.background = 'rgba(39, 174, 96, 0.2)';
+                        window.location.href = '/challenges';
+                    } else {
+                        statusDiv.innerHTML = '<i class="bx bx-x"></i> ' + (data.message || 'Authentication failed');
+                        statusDiv.style.background = 'rgba(231, 76, 60, 0.2)';
+                    }
+                })
+                .catch(error => {
+                    statusDiv.innerHTML = '<i class="bx bx-x"></i> Error connecting to sensor';
                     statusDiv.style.background = 'rgba(231, 76, 60, 0.2)';
-                }
-            })
-            .catch(error => {
-                statusDiv.innerHTML = '<i class="bx bx-x"></i> Error connecting to sensor';
-                statusDiv.style.background = 'rgba(231, 76, 60, 0.2)';
-                console.error('Error:', error);
-            });
+                    console.error('Error:', error);
+                });
         }
     </script>
 </body>
+
 </html>

@@ -10,13 +10,13 @@
                 </div>
                 <div class="card-body">
                     {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div class="alert alert-{{ category }}" role="alert">
-                                    {{ message }}
-                                </div>
-                            {% endfor %}
-                        {% endif %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                    {% endif %}
                     {% endwith %}
 
                     {% if challenge_info %}
@@ -29,14 +29,14 @@
                                 <li><strong>Type:</strong> {{ challenge_info.type }}</li>
                                 <li><strong>Difficulty:</strong> {{ challenge_info.difficulty }}</li>
                             </ul>
-                            
+
                             <h6 class="mt-3">Encryption Details:</h6>
                             <ul class="list-unstyled">
                                 <li><strong>Key:</strong> <code>{{ challenge_info.key }}</code></li>
                                 <li><strong>IV:</strong> <code>{{ challenge_info.iv }}</code></li>
                                 <li><strong>Flag:</strong> <code>{{ challenge_info.flag }}</code></li>
                             </ul>
-                            
+
                             <h6 class="mt-3">Encrypted Message:</h6>
                             <pre class="bg-light p-3 rounded"><code>{{ challenge_info.encrypted_message }}</code></pre>
                         </div>
@@ -44,6 +44,7 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('admin.create_challenge') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="challenge_id" class="form-label">Challenge ID</label>
                             <input type="text" class="form-control" id="challenge_id" name="challenge_id" required>
@@ -54,6 +55,7 @@
                             <label for="challenge_type" class="form-label">Challenge Type</label>
                             <select class="form-select" id="challenge_type" name="challenge_type" required>
                                 <option value="">Select a challenge type</option>
+                                <option value="caesar">Caesar Cipher</option>
                                 <option value="aes">AES Encryption</option>
                                 <option value="vigenere">Vigenere Cipher</option>
                                 <option value="rsa">RSA Encryption</option>
@@ -79,14 +81,16 @@
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Description</label>
-                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                required></textarea>
                         </div>
 
                         <!-- File Upload Field -->
                         <div class="mb-3">
                             <label for="challenge_file" class="form-label">Challenge Files</label>
                             <input type="file" class="form-control" id="challenge_file" name="challenge_file" multiple>
-                            <div class="form-text">Upload any files needed for the challenge (e.g., encrypted files, binaries, etc.)</div>
+                            <div class="form-text">Upload any files needed for the challenge (e.g., encrypted files,
+                                binaries, etc.)</div>
                         </div>
 
                         <!-- Crypto-specific fields -->
@@ -119,7 +123,8 @@
 
                         <div class="mb-3">
                             <label for="points" class="form-label">Points</label>
-                            <input type="number" class="form-control" id="points" name="points" min="0" value="100" required>
+                            <input type="number" class="form-control" id="points" name="points" min="0" value="100"
+                                required>
                         </div>
 
                         <div class="mb-3">
@@ -136,7 +141,8 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">Create Challenge</button>
-                            <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                            <a href="{{ url_for('admin.admin_dashboard') }}"
+                                class="btn btn-outline-secondary">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -146,15 +152,14 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const challengeType = document.getElementById('challenge_type');
-    const cryptoFields = document.getElementById('crypto-fields');
-    
-    challengeType.addEventListener('change', function() {
-        const isCrypto = ['aes', 'vigenere', 'rsa', 'xor', 'des', 'rc4', 'blowfish'].includes(this.value);
-        cryptoFields.style.display = isCrypto ? 'block' : 'none';
+    document.addEventListener('DOMContentLoaded', function () {
+        const challengeType = document.getElementById('challenge_type');
+        const cryptoFields = document.getElementById('crypto-fields');
+
+        challengeType.addEventListener('change', function () {
+            const isCrypto = ['caesar', 'aes', 'vigenere', 'rsa', 'xor', 'des', 'rc4', 'blowfish'].includes(this.value);
+            cryptoFields.style.display = isCrypto ? 'block' : 'none';
+        });
     });
-});
 </script>
 {% endblock %}
- 
